@@ -3,10 +3,10 @@ package com.example.studym8
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.ClickableText
+
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.LocalTextStyle
+
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -16,13 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.style.TextDecoration
+
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+
 
 
 @Composable
@@ -131,12 +129,7 @@ fun TryReg() {
         Spacer(modifier = Modifier.height(32.dp))
 
         // "¿Ya tienes una cuenta? Inicia sesión aquí"
-        ClickableText(
-            text = AnnotatedString("¿Ya tienes una cuenta? Inicia sesión aquí"),
-            onClick = { navController.navigate("login") },  // O la navegación que necesites
-            modifier = Modifier.padding(8.dp),
-            style = LocalTextStyle.current.copy(fontSize = 16.sp, color = Color.Blue, textDecoration = TextDecoration.Underline)
-        )
+
     }
 }
 

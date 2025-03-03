@@ -1,3 +1,4 @@
+
 package com.example.studym8
 
 import android.os.Bundle
@@ -19,7 +20,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    TryReg()
+                    StudyMateApp()
                 }
             }
         }
