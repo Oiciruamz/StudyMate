@@ -21,6 +21,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+
 
 @Composable
 fun TryReg() {
@@ -130,7 +133,7 @@ fun TryReg() {
         // "¿Ya tienes una cuenta? Inicia sesión aquí"
         ClickableText(
             text = AnnotatedString("¿Ya tienes una cuenta? Inicia sesión aquí"),
-            onClick = { /* Acción de iniciar sesion */ },
+            onClick = { navController.navigate("login") },  // O la navegación que necesites
             modifier = Modifier.padding(8.dp),
             style = LocalTextStyle.current.copy(fontSize = 16.sp, color = Color.Blue, textDecoration = TextDecoration.Underline)
         )
@@ -141,4 +144,11 @@ fun TryReg() {
 @Composable
 fun PreviewTryReg() {
     TryReg()
+}
+
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewTryLog() {
+    TryLogin()
 }
