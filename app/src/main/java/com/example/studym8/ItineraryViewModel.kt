@@ -270,6 +270,43 @@ class ItineraryViewModel : androidx.lifecycle.ViewModel() {
         }
     }
 
+    // Función para buscar el ID de un plan por su título (para uso interno)
+    private suspend fun findPlanIdByTitle(title: String): String {
+        return try {
+            val currentUserId = getCurrentUserId()
+
+            val snapshot = db.collection("studyPlans")
+                .whereEqualTo("userId", currentUserId)
+                .whereEqualTo("title", title)
+                .limit(1)
+                .get()
+                .await()
+
+            if (!snapshot.isEmpty) {
+                snapshot.documents[0].id
+            } else {
+                ""
+            }
+        } catch (e: Exception) {
+            Log.e("ItineraryViewModel", "Error al buscar ID por título", e)
+            ""
+        }
+    }
+
+    // Función para navegar a un plan de estudio buscando por título
+// Esta función se puede llamar desde componibles y maneja internamente el viewModelScope
+    fun navigateToStudyPlanByTitle(title: String, onPlanFound: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val foundPlanId = findPlanIdByTitle(title)
+                onPlanFound(foundPlanId)
+            } catch (e: Exception) {
+                Log.e("ItineraryViewModel", "Error al buscar plan por título", e)
+                onPlanFound("") // Llamamos al callback con un string vacío en caso de error
+            }
+        }
+    }
+
     // Función para establecer el plan seleccionado directamente
     fun setSelectedPlan(plan: Map<String, Any>) {
         _selectedPlan.value = plan

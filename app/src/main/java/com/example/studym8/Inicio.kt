@@ -1,45 +1,33 @@
 package com.example.studym8
+import android.util.Log
 import com.example.studym8.ItineraryViewModel
 import com.example.studym8.StudyM8Application
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.util.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.*
-
 import androidx.compose.ui.draw.shadow
-
 import androidx.compose.ui.graphics.vector.ImageVector
-
 import androidx.compose.ui.platform.LocalContext
-
 import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.ui.tooling.preview.Preview
-
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -48,15 +36,12 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -64,19 +49,16 @@ import java.util.*
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-
-import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
-import java.util.*
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.time.delay
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudyMateApp(
-    onLogout: () -> Unit = {} // Callback para manejar el cierre de sesión
+    onLogout: () -> Unit = {}, // Callback para manejar el cierre de sesión
+    onNavigateToStudyPlanDetail: (String) -> Unit = {} // Nuevo callback para navegación
 ) {
     var selectedItem by remember { mutableStateOf(0) }
     val navItems = listOf(
@@ -121,7 +103,6 @@ fun StudyMateApp(
     // Efectos para el mensaje de confirmación
     if (showConfirmationMessage) {
         LaunchedEffect(Unit) {
-
             showConfirmationMessage = false
         }
     }
@@ -244,7 +225,7 @@ fun StudyMateApp(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedItem) {
-                0 -> HomeScreen()
+                0 -> HomeScreen(onItineraryClick = onNavigateToStudyPlanDetail)
                 1 -> ItineraryScreen()
                 2 -> StatsScreen()
             }
@@ -293,7 +274,9 @@ fun TopBarUserInfo(name: String, email: String) {
  * - Sección "Actividades Pendientes"
  */
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    onItineraryClick: (String) -> Unit = {} // Callback para navegar a los detalles del itinerario
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -309,7 +292,9 @@ fun HomeScreen() {
         }
 
         item {
-            StudyPlansList() // Versión no desplazable de tu lista
+            StudyPlansList(
+                onItineraryClick = onItineraryClick // Pasamos el callback a la lista
+            )
         }
 
         item {
@@ -357,14 +342,14 @@ fun HomeScreen() {
         }
     }
 }
-
 /**
  * Tarjeta individual para un itinerario
  */
 @Composable
 fun StudyPlansList(
     viewModel: ItineraryViewModel = viewModel(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onItineraryClick: (String) -> Unit = {} // Callback para navegar a los detalles del itinerario
 ) {
     // Observar el StateFlow de planes de estudio
     val studyPlans by viewModel.studyPlans.collectAsState()
@@ -378,6 +363,7 @@ fun StudyPlansList(
             // Extraer la información necesaria para la tarjeta
             val title = plan["title"] as? String ?: "Plan sin título"
             val startDateTime = plan["startDateTime"] as? Timestamp
+            val planId = plan["id"] as? String ?: "" // Intentamos obtener el ID si existe
 
             // Usar las funciones de utilidad del ViewModel para formatear los datos
             val formattedTime = viewModel.formatTimestamp(startDateTime)
@@ -386,19 +372,38 @@ fun StudyPlansList(
             ItineraryCard(
                 title = title,
                 time = formattedTime,
+                onClick = {
+                    // Si tiene un ID, navegamos a la pantalla de detalles
+                    if (planId.isNotEmpty()) {
+                        onItineraryClick(planId)
+                    } else {
+                        // Si no tiene ID en el mapa, utilizamos una función del ViewModel para buscarlo
+                        viewModel.navigateToStudyPlanByTitle(title) { foundPlanId ->
+                            if (foundPlanId.isNotEmpty()) {
+                                onItineraryClick(foundPlanId)
+                            }
+                        }
+                    }
+                }
             )
             Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }
 
+/**
+ * Tarjeta individual para un itinerario
+ */
 @Composable
 fun ItineraryCard(
     title: String,
-    time: String
+    time: String,
+    onClick: () -> Unit = {} // Callback para cuando se hace clic en la tarjeta
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick), // Hacemos la tarjeta clicable
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
@@ -413,10 +418,16 @@ fun ItineraryCard(
                 Text(text = title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(text = time, fontSize = 14.sp, color = Color.Gray)
             }
+
+            // Añadir un icono de flecha para indicar que es navegable
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Ver detalles",
+                tint = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
-
 /**
  * Chip para fechas
  */

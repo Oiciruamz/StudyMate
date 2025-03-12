@@ -2,9 +2,11 @@ package com.example.studym8
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
@@ -13,6 +15,10 @@ object NavigationRoutes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val HOME = "home" // Esta es tu pantalla de inicio
+    const val STUDY_PLAN_DETAIL = "study_plan_detail/{planId}" // Nueva ruta con parámetro
+
+    // Función auxiliar para crear la ruta con el ID del plan
+    fun studyPlanDetail(planId: String) = "study_plan_detail/$planId"
 }
 
 @Composable
@@ -56,6 +62,7 @@ fun AppNavigation(
 
         composable(NavigationRoutes.HOME) {
             // Usamos StudyMateApp y le pasamos la función para manejar el cierre de sesión
+            // y la navegación a los detalles del plan
             StudyMateApp(
                 onLogout = {
                     // Al cerrar sesión, navegamos de vuelta a la pantalla de login
@@ -63,6 +70,32 @@ fun AppNavigation(
                         // Limpiamos todo el back stack para que no puedan volver a las pantallas anteriores
                         popUpTo(0) { inclusive = true }
                     }
+                },
+                onNavigateToStudyPlanDetail = { planId ->
+                    // Navegar a la pantalla de detalles del itinerario
+                    navController.navigate(NavigationRoutes.studyPlanDetail(planId))
+                }
+            )
+        }
+
+        // Nueva ruta para la pantalla de detalles del itinerario
+        composable(
+            route = NavigationRoutes.STUDY_PLAN_DETAIL,
+            arguments = listOf(
+                navArgument("planId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            // Obtenemos el ID del plan de los argumentos
+            val planId = backStackEntry.arguments?.getString("planId") ?: ""
+
+            // Mostramos la pantalla de detalles con el ID del plan
+            StudyPlanDetailScreen(
+                planId = planId,
+                onBackClick = {
+                    // Volver a la pantalla anterior
+                    navController.popBackStack()
                 }
             )
         }
