@@ -12,18 +12,11 @@ import android.util.Log
 class ItineraryViewModel : androidx.lifecycle.ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
-    private val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
+    private val auth = FirebaseAuth.getInstance()
 
-    init {
-        if (FirebaseAuth.getInstance().currentUser == null) {
-            FirebaseAuth.getInstance().signInAnonymously()
-                .addOnSuccessListener {
-                    Log.d("Auth", "Autenticación anónima exitosa")
-                }
-                .addOnFailureListener { e ->
-                    Log.e("Auth", "Error en autenticación anónima", e)
-                }
-        }
+    // Función para obtener el ID del usuario actual
+    private fun getCurrentUserId(): String {
+        return auth.currentUser?.uid ?: throw IllegalStateException("No hay una sesión de usuario activa")
     }
 
     // Función para generar un itinerario usando la IA
@@ -49,11 +42,12 @@ class ItineraryViewModel : androidx.lifecycle.ViewModel() {
                 Proporciona una estructura clara dividida en sesiones, con objetivos específicos para cada una.
             """.trimIndent()
 
-            // Crear el documento para la extensión de Gemini
+            // Crear el documento para la extensión de Gemini con el ID del usuario actual
             val documentId = UUID.randomUUID().toString()
             val requestData = hashMapOf(
                 "prompt" to prompt,
-                "timestamp" to Timestamp.now()
+                "timestamp" to Timestamp.now(),
+                "userId" to getCurrentUserId() // Asociar la solicitud con el usuario actual
             )
 
             // Guardar el documento en la colección "generate"
@@ -94,13 +88,16 @@ class ItineraryViewModel : androidx.lifecycle.ViewModel() {
         onSuccess: (String) -> Unit,
         onError: (Exception) -> Unit
     ) {
+        // Obtener el ID del usuario actual en el momento de crear el plan
+        val currentUserId = getCurrentUserId()
+
         // Calcular duración total en minutos
         val durationMs = endDateTime.time - startDateTime.time
         val durationMinutes = (durationMs / (1000 * 60)).toInt()
 
         // Crear modelo de datos para el plan de estudio
         val studyPlan = hashMapOf(
-            "userId" to userId,
+            "userId" to currentUserId,
             "title" to "Estudio de $subject",
             "subject" to subject,
             "description" to "Plan de estudio generado con IA",
@@ -128,18 +125,26 @@ class ItineraryViewModel : androidx.lifecycle.ViewModel() {
             }
     }
 
-    // Función para obtener los itinerarios del usuario
+    // Función para obtener los itinerarios del usuario actual
     suspend fun getStudyPlans(): List<Map<String, Any>> {
         return try {
+            val currentUserId = getCurrentUserId()
+
             val snapshot = db.collection("studyPlans")
-                .whereEqualTo("userId", userId)
+                .whereEqualTo("userId", currentUserId)
                 .orderBy("startDateTime")
                 .get()
                 .await()
 
             snapshot.documents.mapNotNull { it.data }
         } catch (e: Exception) {
+            Log.e("ItineraryViewModel", "Error al obtener planes de estudio", e)
             emptyList()
         }
+    }
+
+    // Función para obtener el email del usuario actual
+    fun getCurrentUserEmail(): String {
+        return auth.currentUser?.email ?: throw IllegalStateException("No hay una sesión de usuario activa")
     }
 }

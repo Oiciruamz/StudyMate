@@ -61,15 +61,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.time.delay
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StudyMateApp() {
+fun StudyMateApp(
+    onLogout: () -> Unit = {} // Callback para manejar el cierre de sesión
+) {
     var selectedItem by remember { mutableStateOf(0) }
     val navItems = listOf(
         BottomNavItem.Home,
@@ -77,11 +82,138 @@ fun StudyMateApp() {
         BottomNavItem.Stats
     )
 
+    // Estado para controlar el menú desplegable
+    var showMenu by remember { mutableStateOf(false) }
+
+    // Estado para mostrar un mensaje de confirmación
+    var showConfirmationMessage by remember { mutableStateOf(false) }
+
+    // Obtener la información del usuario actual
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val userName = remember { mutableStateOf(currentUser?.displayName ?: "Usuario") }
+    val userEmail = remember { mutableStateOf(currentUser?.email ?: "correo@ejemplo.com") }
+
+    // Efecto para obtener datos adicionales del usuario desde Firestore si es necesario
+    LaunchedEffect(currentUser) {
+        currentUser?.let { user ->
+            // Si el displayName está vacío, intentamos obtenerlo de Firestore
+            if (user.displayName.isNullOrEmpty()) {
+                try {
+                    val db = FirebaseFirestore.getInstance()
+                    val userDoc = db.collection("users").document(user.uid).get().await()
+
+                    // Actualizar el nombre si existe en Firestore
+                    val displayName = userDoc.getString("displayName")
+                    if (!displayName.isNullOrEmpty()) {
+                        userName.value = displayName
+                    }
+                } catch (e: Exception) {
+                    // Manejar cualquier error al obtener datos
+                    println("Error al obtener datos del usuario: ${e.message}")
+                }
+            }
+        }
+    }
+
+    // Efectos para el mensaje de confirmación
+    if (showConfirmationMessage) {
+        LaunchedEffect(Unit) {
+
+            showConfirmationMessage = false
+        }
+    }
+
     Scaffold(
         topBar = {
-            TopBarUserInfo(
-                name = "Mauricio Muñiz",
-                email = "mauricio09aguirre@gmail.com"
+            TopAppBar(
+                title = {
+                    // Información del usuario
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Avatar o iniciales del usuario
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = userName.value.firstOrNull()?.uppercase() ?: "U",
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+
+                        // Nombre y correo
+                        Column(
+                            modifier = Modifier
+                                .padding(start = 12.dp)
+                                .weight(1f)
+                        ) {
+                            Text(
+                                text = userName.value,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = userEmail.value,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    // Botón de menú con opciones
+                    Box {
+                        IconButton(onClick = { showMenu = !showMenu }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Opciones"
+                            )
+                        }
+
+                        // Menú desplegable
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            // Opción para cerrar sesión
+                            DropdownMenuItem(
+                                text = { Text("Cerrar sesión") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Logout,
+                                        contentDescription = "Cerrar sesión"
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    FirebaseAuth.getInstance().signOut()
+                                    showConfirmationMessage = true
+                                    onLogout()
+                                }
+                            )
+
+                            // Puedes agregar más opciones aquí
+                            DropdownMenuItem(
+                                text = { Text("Mi perfil") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Mi perfil"
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    // Acción para ir al perfil
+                                }
+                            )
+                        }
+                    }
+                }
             )
         },
         bottomBar = {
@@ -95,6 +227,16 @@ fun StudyMateApp() {
                     )
                 }
             }
+        },
+        snackbarHost = {
+            // Mostrar mensaje de confirmación como un Snackbar
+            if (showConfirmationMessage) {
+                Snackbar(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text("Sesión cerrada exitosamente")
+                }
+            }
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
@@ -106,7 +248,6 @@ fun StudyMateApp() {
         }
     }
 }
-
 /**
  * Modelo para la navegación inferior
  */
