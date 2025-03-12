@@ -62,6 +62,7 @@ dependencies {
     implementation(libs.generativeai)
     implementation(libs.material)
     implementation(libs.androidx.navigation.runtime.ktx)
+    implementation(libs.places)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -2,38 +2,38 @@ package com.example.studym8
 import com.example.studym8.ItineraryViewModel
 import com.example.studym8.StudyM8Application
 
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.util.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
+
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
+
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
+
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-import java.util.*
-import kotlin.math.abs
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Home
@@ -58,6 +58,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.*
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -291,79 +294,67 @@ fun TopBarUserInfo(name: String, email: String) {
  */
 @Composable
 fun HomeScreen() {
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            text = "Mis itinerarios",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        // Ejemplo de dos tarjetas de itinerarios
-        ItineraryCard(
-            title = "Programación Web",
-            time = "Hoy a las 12:00 PM",
-            chipText = "Estudios",
-            chipColor = Color(0xFFB3E5FC) // Azul claro
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        ItineraryCard(
-            title = "Dieta Balanceada",
-            time = "Hoy a las 01:00 PM",
-            chipText = "Hábitos",
-            chipColor = Color(0xFFC8E6C9) // Verde claro
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Actividades Pendientes",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        // Fechas en forma de "chips"
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            DateChip("Feb 20", "Lun")
-            DateChip("Feb 21", "Mar")
-            DateChip("Feb 22", "Mié")
-            DateChip("Feb 23", "Jue", selected = true)
-            DateChip("Feb 24", "Vie")
+        item {
+            Text(
+                text = "Mis itinerarios",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Filtros de tareas
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            FilterChip("Todas", selected = true)
-            FilterChip("To do", selected = false)
-            FilterChip("En Progreso", selected = false)
+        item {
+            StudyPlansList() // Versión no desplazable de tu lista
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Actividades Pendientes",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
-        // Tareas
-        ActivityCard(
-            title = "Centrar un DIV",
-            project = "Itinerario Programación Web",
-            status = "En Progreso"
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        ActivityCard(
-            title = "Crear un Header",
-            project = "Itinerario Programación Web",
-            status = "En Progreso"
-        )
+            // Fechas en forma de "chips"
+            DateChipsRow()
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Filtros de tareas
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                FilterChip("Todas", selected = true)
+                FilterChip("To do", selected = false)
+                FilterChip("En Progreso", selected = false)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        item {
+            ActivityCard(
+                title = "Centrar un DIV",
+                project = "Itinerario Programación Web",
+                status = "En Progreso"
+            )
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            ActivityCard(
+                title = "Crear un Header",
+                project = "Itinerario Programación Web",
+                status = "En Progreso"
+            )
+        }
     }
 }
 
@@ -371,11 +362,40 @@ fun HomeScreen() {
  * Tarjeta individual para un itinerario
  */
 @Composable
+fun StudyPlansList(
+    viewModel: ItineraryViewModel = viewModel(),
+    modifier: Modifier = Modifier
+) {
+    // Observar el StateFlow de planes de estudio
+    val studyPlans by viewModel.studyPlans.collectAsState()
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        studyPlans.forEach { plan ->
+            // Extraer la información necesaria para la tarjeta
+            val title = plan["title"] as? String ?: "Plan sin título"
+            val startDateTime = plan["startDateTime"] as? Timestamp
+
+            // Usar las funciones de utilidad del ViewModel para formatear los datos
+            val formattedTime = viewModel.formatTimestamp(startDateTime)
+
+            // Mostrar la tarjeta de itinerario
+            ItineraryCard(
+                title = title,
+                time = formattedTime,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+    }
+}
+
+@Composable
 fun ItineraryCard(
     title: String,
-    time: String,
-    chipText: String,
-    chipColor: Color
+    time: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -393,13 +413,6 @@ fun ItineraryCard(
                 Text(text = title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(text = time, fontSize = 14.sp, color = Color.Gray)
             }
-            Box(
-                modifier = Modifier
-                    .background(chipColor, shape = MaterialTheme.shapes.medium)
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Text(text = chipText, fontSize = 14.sp)
-            }
         }
     }
 }
@@ -407,20 +420,69 @@ fun ItineraryCard(
 /**
  * Chip para fechas
  */
+
 @Composable
-fun DateChip(date: String, day: String, selected: Boolean = false) {
+fun DateChipsRow() {
+    // Estado para guardar la fecha seleccionada (por defecto es hoy)
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+
+    // Obtener los próximos 5 días comenzando por hoy
+    val next5Days = remember {
+        (0 until 5).map { LocalDate.now().plusDays(it.toLong()) }
+    }
+
+    // Formatters para mostrar el día y la fecha
+    val dayFormatter = remember { DateTimeFormatter.ofPattern("EEE", Locale("es", "ES")) }
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM d", Locale("es", "ES")) }
+
+    Row(
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // Crear un DateChip para cada uno de los 5 días
+        next5Days.forEach { date ->
+            DateChip(
+                date = date.format(dateFormatter).capitalize(),
+                day = date.format(dayFormatter).capitalize(),
+                selected = date.isEqual(selectedDate),
+                onDateSelected = { selectedDate = date }
+            )
+        }
+    }
+}
+
+/**
+ * Chip que muestra una fecha y permite seleccionarla
+ */
+@Composable
+fun DateChip(
+    date: String,
+    day: String,
+    selected: Boolean = false,
+    onDateSelected: () -> Unit
+) {
     val backgroundColor = if (selected) MaterialTheme.colorScheme.primary else Color(0xFFF5F5F5)
     val contentColor = if (selected) Color.White else Color.Black
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .width(48.dp)
-            .background(backgroundColor, shape = MaterialTheme.shapes.medium)
-            .padding(vertical = 4.dp)
+            .width(60.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .background(backgroundColor)
+            .clickable(onClick = onDateSelected)
+            .padding(vertical = 8.dp)
     ) {
         Text(text = date, color = contentColor, fontSize = 12.sp)
         Text(text = day, color = contentColor, fontSize = 12.sp)
+    }
+}
+
+// Función para capitalizar la primera letra de un String
+private fun String.capitalize(): String {
+    return this.replaceFirstChar {
+        if (it.isLowerCase()) it.titlecase(Locale.getDefault())
+        else it.toString()
     }
 }
 
