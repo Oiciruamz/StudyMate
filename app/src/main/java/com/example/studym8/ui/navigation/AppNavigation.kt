@@ -13,6 +13,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.studym8.ui.screens.HomeScreen
 import com.example.studym8.ui.screens.ItineraryScreen
+import com.example.studym8.ui.screens.LoginScreen
+import com.example.studym8.ui.screens.RegisterScreen
 import com.example.studym8.ui.screens.StudyPlanDetailScreen
 import com.example.studym8.ui.viewmodel.AuthViewModel
 import com.example.studym8.ui.viewmodel.StudyPlanViewModel
@@ -73,26 +75,29 @@ fun AppNavigation(
     NavHost(navController = navController, startDestination = startDestination) {
         // Pantalla de inicio de sesión
         composable(NavigationRoutes.LOGIN) {
-            // Temporalmente usamos HomeScreen en lugar de LoginScreen hasta implementarla
-            HomeScreen(
-                onNavigateToStudyPlanDetail = { planId ->
-                    navController.navigate(NavigationRoutes.studyPlanDetail(planId))
+            LoginScreen(
+                onLoginSuccess = {
+                    // Al iniciar sesión exitosamente, el LaunchedEffect manejará la navegación
+                    authViewModel.checkCurrentUser()
                 },
-                onLogout = {
-                    authViewModel.signOut()
+                navigateToRegister = {
+                    navController.navigate(NavigationRoutes.REGISTER)
                 }
             )
         }
         
         // Pantalla de registro
         composable(NavigationRoutes.REGISTER) {
-            // Temporalmente usamos HomeScreen en lugar de RegisterScreen hasta implementarla
-            HomeScreen(
-                onNavigateToStudyPlanDetail = { planId ->
-                    navController.navigate(NavigationRoutes.studyPlanDetail(planId))
+            RegisterScreen(
+                onRegisterSuccess = {
+                    // Al registrarse exitosamente, el LaunchedEffect manejará la navegación
+                    authViewModel.checkCurrentUser()
                 },
-                onLogout = {
-                    authViewModel.signOut()
+                navigateToLogin = {
+                    navController.navigate(NavigationRoutes.LOGIN) {
+                        // Eliminar la pantalla de registro del stack para que back vaya a login
+                        popUpTo(NavigationRoutes.LOGIN) { inclusive = false }
+                    }
                 }
             )
         }

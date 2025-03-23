@@ -28,6 +28,9 @@ fun MainAppContent() {
     val authViewModel: AuthViewModel = viewModel()
     val studyPlanViewModel: StudyPlanViewModel = viewModel()
     
+    // Verificar el usuario actual al inicio
+    authViewModel.checkCurrentUser()
+    
     // Configurar la navegación de la aplicación
     AppNavigation(
         authViewModel = authViewModel,
