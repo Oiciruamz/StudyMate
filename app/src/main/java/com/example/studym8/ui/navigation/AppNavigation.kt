@@ -13,11 +13,12 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.studym8.ui.screens.HomeScreen
 import com.example.studym8.ui.screens.ItineraryScreen
-import com.example.studym8.ui.screens.LoginScreen
-import com.example.studym8.ui.screens.RegisterScreen
 import com.example.studym8.ui.screens.StudyPlanDetailScreen
 import com.example.studym8.ui.viewmodel.AuthViewModel
 import com.example.studym8.ui.viewmodel.StudyPlanViewModel
+import com.example.studym8.LoginScreen
+import com.example.studym8.RegisterScreen
+import com.example.studym8.ui.navigation.MainScreenNavigator
 
 /**
  * Rutas de navegación de la aplicación
