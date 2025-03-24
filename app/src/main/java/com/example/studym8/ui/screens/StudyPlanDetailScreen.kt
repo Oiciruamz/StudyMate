@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -73,7 +74,8 @@ fun StudyPlanDetailScreen(
     planId: String,
     authViewModel: AuthViewModel = viewModel(),
     studyPlanViewModel: StudyPlanViewModel = viewModel(),
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onChatClick: (String) -> Unit = {}
 ) {
     // Estados
     val currentUser by authViewModel.currentUser.collectAsState(initial = null)
@@ -101,6 +103,16 @@ fun StudyPlanDetailScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Volver"
+                        )
+                    }
+                },
+                actions = {
+                    // Botón para abrir el chat
+                    IconButton(onClick = { onChatClick(planId) }) {
+                        Icon(
+                            imageVector = Icons.Default.Chat,
+                            contentDescription = "Chat",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 },
@@ -498,7 +510,7 @@ fun StudyPlanDetailScreen(
                     // Mostrar respuesta de la IA si existe
                     if (plan.aiGenerated && plan.aiResponse.isNotBlank()) {
                         AnimatedVisibility(
-                            visible = true,
+                            visible = false,
                             enter = fadeIn() + expandVertically()
                         ) {
                             Column {
@@ -657,7 +669,7 @@ fun SessionItem(
             ) {
                 if (session.notes.isNotBlank()) {
                     Text(
-                        text = session.notes,
+                        text = formatDescriptionText(session.notes),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                     )

@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -66,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -99,8 +101,16 @@ fun HomeScreen(
     val isLoading by studyPlanViewModel.isLoading.collectAsState()
     val error by studyPlanViewModel.error.collectAsState()
     
-    // Estados para pestañas
+    // Estados para pestañas y fecha seleccionada
     var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var selectedDateIndex by remember { mutableIntStateOf(0) }
+    
+    // Obtener las fechas para el selector
+    val dates = List(5) { index ->
+        val calendar = Calendar.getInstance()
+        calendar.add(Calendar.DAY_OF_YEAR, index)
+        calendar.time
+    }
     
     // Cargar los planes de estudio cuando se muestra la pantalla
     LaunchedEffect(currentUser) {
@@ -204,9 +214,12 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 // Selector de fechas
-                DateHeader()
+                DateHeader(selectedDate = dates[selectedDateIndex])
                 Spacer(modifier = Modifier.height(8.dp))
-                DateSelector()
+                DateSelector(
+                    selectedIndex = selectedDateIndex,
+                    onDateSelected = { index -> selectedDateIndex = index }
+                )
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
@@ -303,22 +316,29 @@ fun HomeScreen(
                             else -> studyPlans
                         }
                         
-                        if (filteredPlans.isEmpty() && hasLoadedButEmpty) {
+                        // Filtrar por fecha seleccionada
+                        val selectedDate = dates[selectedDateIndex]
+                        val dateFilteredPlans = filteredPlans.filter { plan ->
+                            val planDate = plan.startDateTime.toDate()
+                            isSameDay(planDate, selectedDate)
+                        }
+                        
+                        if (dateFilteredPlans.isEmpty() && hasLoadedButEmpty) {
                             item {
                                 EmptyStateMessage(
-                                    message = "No hay planes en esta categoría.\nCrea un nuevo plan con el botón +",
+                                    message = "No hay planes para este día.\nCrea un nuevo plan con el botón +",
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
-                        } else if (filteredPlans.isEmpty()) {
+                        } else if (dateFilteredPlans.isEmpty()) {
                             item {
                                 EmptyStateMessage(
-                                    message = "No hay planes en esta categoría",
+                                    message = "No hay planes para este día",
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         } else {
-                            items(filteredPlans) { plan ->
+                            items(dateFilteredPlans) { plan ->
                                 val startDate = plan.startDateTime.toDate()
                                 val formattedTime = SimpleDateFormat("dd MMM, HH:mm", Locale("es", "ES")).format(startDate)
                                 
@@ -462,8 +482,8 @@ fun ProgressCard(
             .background(
                 brush = Brush.linearGradient(
                     colors = gradientColors,
-                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
-                    end = androidx.compose.ui.geometry.Offset(1000f, 1000f)
+                    start = Offset(0f, 0f),
+                    end = Offset(1000f, 1000f)
                 )
             )
     ) {
@@ -810,14 +830,12 @@ fun EmptyStateMessage(
 }
 
 @Composable
-fun DateHeader() {
-    // Obtener la fecha actual
-    val calendar = Calendar.getInstance()
-    val currentDate = calendar.time
+fun DateHeader(selectedDate: Date) {
+    // Formatear la fecha seleccionada
     val dateFormatter = SimpleDateFormat("EEEE, d MMMM", Locale("es", "ES"))
     
     Text(
-        text = dateFormatter.format(currentDate),
+        text = dateFormatter.format(selectedDate),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -825,38 +843,47 @@ fun DateHeader() {
 }
 
 @Composable
-fun DateSelector() {
+fun DateSelector(
+    selectedIndex: Int,
+    onDateSelected: (Int) -> Unit
+) {
     // Obtener los próximos 5 días
-    val calendar = Calendar.getInstance()
-    val currentDate = calendar.time
     val dates = List(5) { index ->
         val newCalendar = Calendar.getInstance()
         newCalendar.add(Calendar.DAY_OF_YEAR, index)
         Triple(
             newCalendar.get(Calendar.DAY_OF_MONTH),
             SimpleDateFormat("EEE", Locale("es", "ES")).format(newCalendar.time),
-            index == 0 // El día actual es el seleccionado
+            index == selectedIndex // Usar el parámetro para determinar cuál está seleccionado
         )
     }
     
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp)
+        contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        items(dates) { (day, dayName, isSelected) ->
+        itemsIndexed(dates) { index, (day, dayName, _) ->
+            // Calcular si este ítem está seleccionado basado en el índice
+            val isSelected = index == selectedIndex
+            
             // Animación al renderizar cada fecha
             AnimatedVisibility(
                 visible = true,
                 enter = fadeIn(initialAlpha = 0.4f) + 
                     slideInVertically(
-                        initialOffsetY = { it * (1 + dates.indexOf(Triple(day, dayName, isSelected)) / 5) }, 
+                        initialOffsetY = { it * (1 + index / 5) }, 
                         animationSpec = spring(
                             dampingRatio = Spring.DampingRatioMediumBouncy,
                             stiffness = Spring.StiffnessMedium
                         )
                     )
             ) {
-                DateChip(day.toString(), dayName, isSelected)
+                DateChip(
+                    day = day.toString(), 
+                    dayName = dayName, 
+                    isSelected = isSelected,
+                    onDateSelected = { onDateSelected(index) }
+                )
             }
         }
     }
@@ -866,7 +893,8 @@ fun DateSelector() {
 fun DateChip(
     day: String,
     dayName: String,
-    isSelected: Boolean
+    isSelected: Boolean,
+    onDateSelected: () -> Unit
 ) {
     // Animación del escalado al seleccionar una fecha
     val scale by animateFloatAsState(
@@ -878,16 +906,25 @@ fun DateChip(
         label = "scaleAnimation"
     )
     
+    // Usamos directamente los colores sin animación
+    val backgroundColor = if (isSelected) 
+        MaterialTheme.colorScheme.primary 
+    else 
+        MaterialTheme.colorScheme.surfaceVariant
+    
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+            containerColor = backgroundColor
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 4.dp else 0.dp
         ),
         modifier = Modifier
             .size(width = 60.dp, height = 80.dp)
             .clip(RoundedCornerShape(16.dp))
-            .clickable { /* Seleccionar esta fecha */ }
-            // Aplicar la escala desde el centro
+            .clickable { onDateSelected() }
+            .scale(scale)
             .padding(4.dp)
     ) {
         Column(
@@ -968,4 +1005,13 @@ fun FirestoreErrorMessage(
             Text("Reintentar")
         }
     }
+}
+
+// Función auxiliar para verificar si dos fechas son del mismo día
+private fun isSameDay(date1: Date, date2: Date): Boolean {
+    val cal1 = Calendar.getInstance().apply { time = date1 }
+    val cal2 = Calendar.getInstance().apply { time = date2 }
+    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+           cal1.get(Calendar.MONTH) == cal2.get(Calendar.MONTH) &&
+           cal1.get(Calendar.DAY_OF_MONTH) == cal2.get(Calendar.DAY_OF_MONTH)
 }

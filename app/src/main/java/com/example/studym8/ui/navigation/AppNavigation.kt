@@ -23,6 +23,7 @@ import androidx.navigation.navArgument
 import com.example.studym8.ui.screens.HomeScreen
 import com.example.studym8.ui.screens.ItineraryScreen
 import com.example.studym8.ui.screens.StudyPlanDetailScreen
+import com.example.studym8.ui.screens.StudyPlanChatScreen
 import com.example.studym8.ui.viewmodel.AuthViewModel
 import com.example.studym8.ui.viewmodel.StudyPlanViewModel
 import com.example.studym8.ui.screens.auth.LoginScreen
@@ -44,11 +45,18 @@ object NavigationRoutes {
     const val STUDY_PLAN_DETAIL_BASE = "study_plan_detail"
     const val STUDY_PLAN_DETAIL = "$STUDY_PLAN_DETAIL_BASE/{planId}"
     
+    // Ruta para el chat del plan de estudio
+    const val STUDY_PLAN_CHAT_BASE = "study_plan_chat"
+    const val STUDY_PLAN_CHAT = "$STUDY_PLAN_CHAT_BASE/{planId}"
+    
     // Ruta principal que contiene las pantallas con navegación inferior
     const val MAIN = "main"
     
     // Función para crear la ruta de detalle de plan de estudio con un ID específico
     fun studyPlanDetail(planId: String): String = "$STUDY_PLAN_DETAIL_BASE/$planId"
+    
+    // Función para crear la ruta de chat de plan de estudio con un ID específico
+    fun studyPlanChat(planId: String): String = "$STUDY_PLAN_CHAT_BASE/$planId"
 }
 
 /**
@@ -153,6 +161,23 @@ fun AppNavigation(
                 planId = planId,
                 authViewModel = authViewModel,
                 studyPlanViewModel = studyPlanViewModel,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onChatClick = { planId ->
+                    navController.navigate(NavigationRoutes.studyPlanChat(planId))
+                }
+            )
+        }
+        
+        // Pantalla de chat del plan de estudio
+        composable(
+            route = NavigationRoutes.STUDY_PLAN_CHAT,
+            arguments = listOf(navArgument("planId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val planId = backStackEntry.arguments?.getString("planId") ?: ""
+            StudyPlanChatScreen(
+                planId = planId,
                 onBackClick = {
                     navController.popBackStack()
                 }

@@ -206,4 +206,48 @@ class StudyPlanRepository {
             return null
         }
     }
+    
+    suspend fun generateChatResponse(prompt: String): String? {
+        val generateCollectionRef = db.collection("generate")
+        
+        try {
+            // Crear un ID único para esta solicitud
+            val documentId = UUID.randomUUID().toString()
+            
+            // Preparar los datos del documento
+            val requestData = hashMapOf(
+                "prompt" to prompt,
+                "timestamp" to Timestamp.now(),
+                "userId" to getCurrentUserId(),
+                "type" to "chat"  // Indicar que es una solicitud de chat
+            )
+            
+            // Guardar el documento en Firestore
+            generateCollectionRef.document(documentId).set(requestData).await()
+            
+            // Esperar a que la IA genere la respuesta (con timeout)
+            var attempts = 0
+            val maxAttempts = 10
+            
+            while (attempts < maxAttempts) {
+                // Esperar un momento para que la extensión procese
+                kotlinx.coroutines.delay(2000) // 2 segundos
+                
+                // Obtener el documento actualizado
+                val document = generateCollectionRef.document(documentId).get().await()
+                
+                // Verificar si ya contiene la respuesta
+                if (document.contains("response")) {
+                    return document.getString("response")
+                }
+                
+                attempts++
+            }
+            
+            return "No se pudo generar una respuesta después de varios intentos. Por favor, intenta de nuevo más tarde."
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
+        }
+    }
 } 

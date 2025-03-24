@@ -75,6 +75,7 @@ fun String.toResponseSections(): List<ResponseSection> {
         val newType = when {
             trimmedLine.startsWith("# ") -> ResponseSectionType.TITLE
             trimmedLine.startsWith("## ") -> ResponseSectionType.SUBTITLE
+            trimmedLine.startsWith("##Sesión") -> ResponseSectionType.SUBTITLE
             trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ") -> ResponseSectionType.INFO_ITEM
             else -> ResponseSectionType.PARAGRAPH
         }
@@ -93,9 +94,28 @@ fun String.toResponseSections(): List<ResponseSection> {
             ResponseSectionType.SUBTITLE -> {
                 // Para sesiones, extraer "Sesión X" y el resto del título
                 if (trimmedLine.contains("Sesión")) {
-                    val sessionPart = "Sesión " + trimmedLine.substringAfter("Sesión ").substringBefore(":")
-                    val titlePart = trimmedLine.substringAfter(":")
-                    "$sessionPart:$titlePart"
+                    // Manejar casos donde puede estar como ##Sesión o ## Sesión
+                    val sessionText = if (trimmedLine.contains("## Sesión")) {
+                        trimmedLine.substringAfter("## ")
+                    } else if (trimmedLine.contains("##Sesión")) {
+                        trimmedLine.substringAfter("##")
+                    } else {
+                        trimmedLine.substringAfter("## ")
+                    }
+                    
+                    val sessionPart = if (sessionText.contains(":")) {
+                        "Sesión " + sessionText.substringAfter("Sesión ").substringBefore(":")
+                    } else {
+                        sessionText
+                    }
+                    
+                    val titlePart = if (sessionText.contains(":")) {
+                        sessionText.substringAfter(":")
+                    } else {
+                        ""
+                    }
+                    
+                    if (titlePart.isNotEmpty()) "$sessionPart:$titlePart" else sessionPart
                 } else {
                     trimmedLine.substringAfter("## ")
                 }

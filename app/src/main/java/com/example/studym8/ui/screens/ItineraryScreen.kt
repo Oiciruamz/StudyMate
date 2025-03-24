@@ -9,7 +9,10 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -57,6 +61,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -186,7 +191,13 @@ fun ItineraryScreen(
                 
                 // Formulario de creación de plan de estudio
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        ),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
@@ -216,35 +227,41 @@ fun ItineraryScreen(
                         ) {
                             OutlinedButton(
                                 onClick = { showStartDatePicker = true },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.DateRange,
-                                    contentDescription = "Seleccionar fecha de inicio"
+                                    contentDescription = "Seleccionar fecha de inicio",
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (startDate != null) 
                                         dateFormatter.format(startDate!!)
                                     else 
-                                        "Fecha inicio"
+                                        "Fecha inicio",
+                                    color = if (startDate != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
                             }
                             
                             OutlinedButton(
                                 onClick = { showStartTimePicker = true },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Timer,
-                                    contentDescription = "Seleccionar hora de inicio"
+                                    contentDescription = "Seleccionar hora de inicio",
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (startDate != null) 
                                         timeFormatter.format(startDate!!)
                                     else 
-                                        "Hora inicio"
+                                        "Hora inicio",
+                                    color = if (startDate != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
                             }
                         }
@@ -256,35 +273,41 @@ fun ItineraryScreen(
                         ) {
                             OutlinedButton(
                                 onClick = { showEndDatePicker = true },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.DateRange,
-                                    contentDescription = "Seleccionar fecha de fin"
+                                    contentDescription = "Seleccionar fecha de fin",
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (endDate != null) 
                                         dateFormatter.format(endDate!!)
                                     else 
-                                        "Fecha fin"
+                                        "Fecha fin",
+                                    color = if (endDate != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
                             }
                             
                             OutlinedButton(
                                 onClick = { showEndTimePicker = true },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Timer,
-                                    contentDescription = "Seleccionar hora de fin"
+                                    contentDescription = "Seleccionar hora de fin",
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (endDate != null) 
                                         timeFormatter.format(endDate!!)
                                     else 
-                                        "Hora fin"
+                                        "Hora fin",
+                                    color = if (endDate != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
                             }
                         }
@@ -565,83 +588,51 @@ fun ItineraryScreen(
         
         // Diálogos para seleccionar fecha y hora
         if (showStartDatePicker) {
-            DatePickerDialog(
+            CalendarioPersonalizado(
                 onDismissRequest = { showStartDatePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        startDatePickerState.selectedDateMillis?.let { millis ->
-                            val calendar = Calendar.getInstance().apply {
-                                timeInMillis = millis
-                                // Asegurarse de que la fecha es exactamente la seleccionada
-                                set(Calendar.HOUR_OF_DAY, 0)
-                                set(Calendar.MINUTE, 0)
-                                set(Calendar.SECOND, 0)
-                                set(Calendar.MILLISECOND, 0)
-                                
-                                if (startDate != null) {
-                                    val oldCal = Calendar.getInstance().apply { time = startDate!! }
-                                    set(Calendar.HOUR_OF_DAY, oldCal.get(Calendar.HOUR_OF_DAY))
-                                    set(Calendar.MINUTE, oldCal.get(Calendar.MINUTE))
-                                } else {
-                                    set(Calendar.HOUR_OF_DAY, 9)
-                                    set(Calendar.MINUTE, 0)
-                                }
-                            }
-                            startDate = calendar.time
-                        }
-                        showStartDatePicker = false
-                    }) {
-                        Text("Confirmar")
+                onDateSelected = { selectedDate ->
+                    // Preservar la hora del día actual si ya existe una fecha
+                    val calendar = Calendar.getInstance()
+                    if (startDate != null) {
+                        calendar.time = startDate!!
+                    } else {
+                        calendar.set(Calendar.HOUR_OF_DAY, 9)
+                        calendar.set(Calendar.MINUTE, 0)
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showStartDatePicker = false }) {
-                        Text("Cancelar")
-                    }
+                    
+                    // Establecer la fecha seleccionada (año, mes, día)
+                    calendar.set(Calendar.YEAR, selectedDate.get(Calendar.YEAR))
+                    calendar.set(Calendar.MONTH, selectedDate.get(Calendar.MONTH))
+                    calendar.set(Calendar.DAY_OF_MONTH, selectedDate.get(Calendar.DAY_OF_MONTH))
+                    
+                    startDate = calendar.time
+                    showStartDatePicker = false
                 }
-            ) {
-                DatePicker(state = startDatePickerState)
-            }
+            )
         }
         
         if (showEndDatePicker) {
-            DatePickerDialog(
+            CalendarioPersonalizado(
                 onDismissRequest = { showEndDatePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        endDatePickerState.selectedDateMillis?.let { millis ->
-                            val calendar = Calendar.getInstance().apply {
-                                timeInMillis = millis
-                                // Asegurarse de que la fecha es exactamente la seleccionada
-                                set(Calendar.HOUR_OF_DAY, 0)
-                                set(Calendar.MINUTE, 0)
-                                set(Calendar.SECOND, 0)
-                                set(Calendar.MILLISECOND, 0)
-                                
-                                if (endDate != null) {
-                                    val oldCal = Calendar.getInstance().apply { time = endDate!! }
-                                    set(Calendar.HOUR_OF_DAY, oldCal.get(Calendar.HOUR_OF_DAY))
-                                    set(Calendar.MINUTE, oldCal.get(Calendar.MINUTE))
-                                } else {
-                                    set(Calendar.HOUR_OF_DAY, 11)
-                                    set(Calendar.MINUTE, 0)
-                                }
-                            }
-                            endDate = calendar.time
-                        }
-                        showEndDatePicker = false
-                    }) {
-                        Text("Confirmar")
+                onDateSelected = { selectedDate ->
+                    // Preservar la hora del día actual si ya existe una fecha
+                    val calendar = Calendar.getInstance()
+                    if (endDate != null) {
+                        calendar.time = endDate!!
+                    } else {
+                        calendar.set(Calendar.HOUR_OF_DAY, 11)
+                        calendar.set(Calendar.MINUTE, 0)
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showEndDatePicker = false }) {
-                        Text("Cancelar")
-                    }
+                    
+                    // Establecer la fecha seleccionada (año, mes, día)
+                    calendar.set(Calendar.YEAR, selectedDate.get(Calendar.YEAR))
+                    calendar.set(Calendar.MONTH, selectedDate.get(Calendar.MONTH))
+                    calendar.set(Calendar.DAY_OF_MONTH, selectedDate.get(Calendar.DAY_OF_MONTH))
+                    
+                    endDate = calendar.time
+                    showEndDatePicker = false
                 }
-            ) {
-                DatePicker(state = endDatePickerState)
-            }
+            )
         }
         
         if (showStartTimePicker) {
@@ -701,12 +692,408 @@ fun ItineraryScreen(
 }
 
 @Composable
+fun CalendarioPersonalizado(
+    onDismissRequest: () -> Unit,
+    onDateSelected: (Calendar) -> Unit
+) {
+    val mesesEspanol = listOf(
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    )
+    val diasSemanaEspanol = listOf("L", "M", "X", "J", "V", "S", "D")
+    
+    val calendarioActual = remember { Calendar.getInstance() }
+    var mesSeleccionado by remember { mutableStateOf(calendarioActual.get(Calendar.MONTH)) }
+    var anoSeleccionado by remember { mutableStateOf(calendarioActual.get(Calendar.YEAR)) }
+    var diaSeleccionado by remember { mutableStateOf<Int?>(null) }
+    
+    // Obtener el primer día del mes y número de días en el mes
+    val calendar = Calendar.getInstance().apply {
+        set(Calendar.YEAR, anoSeleccionado)
+        set(Calendar.MONTH, mesSeleccionado)
+        set(Calendar.DAY_OF_MONTH, 1)
+    }
+    val primerDiaSemana = (calendar.get(Calendar.DAY_OF_WEEK) + 5) % 7 // Ajuste para que lunes sea el primer día
+    val numDiasEnMes = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+    
+    // Animaciones y efectos visuales
+    val transitionScale = remember { androidx.compose.animation.core.Animatable(0.95f) }
+    val mesTransition = remember { androidx.compose.animation.core.Animatable(1f) }
+    val scope = rememberCoroutineScope()
+    
+    // Gradientes para efectos visuales
+    val gradientBrush = Brush.verticalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f)
+        )
+    )
+    
+    // Efecto inicial de entrada
+    LaunchedEffect(Unit) {
+        transitionScale.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(350, easing = FastOutSlowInEasing)
+        )
+    }
+    
+    // Efecto cuando cambia el mes
+    LaunchedEffect(mesSeleccionado, anoSeleccionado) {
+        mesTransition.snapTo(0.85f)
+        mesTransition.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = 300,
+                easing = FastOutSlowInEasing
+            )
+        )
+    }
+    
+    Dialog(onDismissRequest = onDismissRequest) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)  // Limitar el ancho al 95% de la pantalla
+                .padding(8.dp)
+                .shadow(
+                    elevation = 8.dp,
+                    spotColor = MaterialTheme.colorScheme.primary,
+                    ambientColor = MaterialTheme.colorScheme.secondary,
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .scale(transitionScale.value),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(gradientBrush)
+                    .padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Cabecera con título y botones de navegación
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                if (mesSeleccionado == 0) {
+                                    mesSeleccionado = 11
+                                    anoSeleccionado--
+                                } else {
+                                    mesSeleccionado--
+                                }
+                                diaSeleccionado = null
+                            }
+                        },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = "Mes anterior",
+                            modifier = Modifier
+                                .size(20.dp)
+                                .rotate(270f),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.scale(mesTransition.value)
+                    ) {
+                        Text(
+                            text = "${mesesEspanol[mesSeleccionado]} $anoSeleccionado",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        
+                        // Indicador decorativo
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .width(50.dp)
+                                .height(2.dp)
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    RoundedCornerShape(8.dp)
+                                )
+                        )
+                    }
+                    
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                if (mesSeleccionado == 11) {
+                                    mesSeleccionado = 0
+                                    anoSeleccionado++
+                                } else {
+                                    mesSeleccionado++
+                                }
+                                diaSeleccionado = null
+                            }
+                        },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = "Mes siguiente",
+                            modifier = Modifier
+                                .size(20.dp)
+                                .rotate(90f),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                
+                // Cabecera de días de la semana
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        .padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    diasSemanaEspanol.forEach { dia ->
+                        Text(
+                            text = dia,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // Grilla de días del mes con efecto de escala
+                Box(
+                    modifier = Modifier
+                        .scale(mesTransition.value)
+                        .fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val filas = (primerDiaSemana + numDiasEnMes + 6) / 7
+                        
+                        for (i in 0 until filas) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                for (j in 0 until 7) {
+                                    // Calcular el índice del día en el mes
+                                    val diaIndice = i * 7 + j - primerDiaSemana
+                                    
+                                    if (diaIndice >= 0 && diaIndice < numDiasEnMes) {
+                                        val dia = diaIndice + 1
+                                        val esHoy = esMismoDia(
+                                            Calendar.getInstance(),
+                                            Calendar.getInstance().apply {
+                                                set(Calendar.YEAR, anoSeleccionado)
+                                                set(Calendar.MONTH, mesSeleccionado)
+                                                set(Calendar.DAY_OF_MONTH, dia)
+                                            }
+                                        )
+                                        val estaSeleccionado = diaSeleccionado == dia
+                                        
+                                        // Botón de día con efectos visuales
+                                        Box(
+                                            modifier = Modifier
+                                                .size(32.dp)  // Reducir tamaño para pantallas pequeñas
+                                                .shadow(
+                                                    elevation = if (estaSeleccionado) 4.dp else 0.dp,
+                                                    shape = RoundedCornerShape(50),
+                                                    spotColor = if (estaSeleccionado) 
+                                                        MaterialTheme.colorScheme.secondary 
+                                                    else 
+                                                        Color.Transparent
+                                                )
+                                                .clip(RoundedCornerShape(50))
+                                                .background(
+                                                    when {
+                                                        estaSeleccionado -> MaterialTheme.colorScheme.secondary
+                                                        esHoy -> MaterialTheme.colorScheme.primary
+                                                        else -> if ((i + j) % 2 == 0) 
+                                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                                                        else 
+                                                            Color.Transparent
+                                                    }
+                                                )
+                                                .clickable {
+                                                    diaSeleccionado = dia
+                                                    
+                                                    // Crear el calendario seleccionado
+                                                    val selectedCalendar = Calendar.getInstance()
+                                                    selectedCalendar.set(Calendar.YEAR, anoSeleccionado)
+                                                    selectedCalendar.set(Calendar.MONTH, mesSeleccionado)
+                                                    selectedCalendar.set(Calendar.DAY_OF_MONTH, dia)
+                                                    
+                                                    // Efecto visual al seleccionar
+                                                    scope.launch {
+                                                        transitionScale.animateTo(
+                                                            targetValue = 0.96f,
+                                                            animationSpec = tween(150)
+                                                        )
+                                                        onDateSelected(selectedCalendar)
+                                                    }
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "$dia",
+                                                color = when {
+                                                    estaSeleccionado -> MaterialTheme.colorScheme.onSecondary
+                                                    esHoy -> MaterialTheme.colorScheme.onPrimary
+                                                    else -> MaterialTheme.colorScheme.onSurface
+                                                },
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = when {
+                                                    estaSeleccionado || esHoy -> FontWeight.Bold
+                                                    else -> FontWeight.Normal
+                                                }
+                                            )
+                                        }
+                                    } else {
+                                        // Espacio vacío
+                                        Spacer(modifier = Modifier.size(32.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Botones de acción
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(
+                        onClick = { onDismissRequest() },
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cancelar",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "Cancelar",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                    
+                    TextButton(
+                        onClick = {
+                            val hoy = Calendar.getInstance()
+                            val selectedCalendar = Calendar.getInstance()
+                            
+                            // Seleccionar la fecha de hoy
+                            diaSeleccionado = hoy.get(Calendar.DAY_OF_MONTH)
+                            mesSeleccionado = hoy.get(Calendar.MONTH)
+                            anoSeleccionado = hoy.get(Calendar.YEAR)
+                            
+                            // Pasar el calendario seleccionado
+                            onDateSelected(selectedCalendar)
+                        },
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "Hoy",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "Hoy",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Función para determinar si dos fechas son el mismo día
+fun esMismoDia(cal1: Calendar, cal2: Calendar): Boolean {
+    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+           cal1.get(Calendar.MONTH) == cal2.get(Calendar.MONTH) &&
+           cal1.get(Calendar.DAY_OF_MONTH) == cal2.get(Calendar.DAY_OF_MONTH)
+}
+
+@Composable
 fun TimePickerDialog(
     onDismissRequest: () -> Unit,
     confirmButton: @Composable () -> Unit,
     dismissButton: @Composable () -> Unit,
     content: @Composable () -> Unit
 ) {
+    // Animación de entrada
+    val transitionScale = remember { androidx.compose.animation.core.Animatable(0.95f) }
+    
+    LaunchedEffect(Unit) {
+        transitionScale.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(300, easing = FastOutSlowInEasing)
+        )
+    }
+    
+    // Gradiente de fondo sutil
+    val gradientBrush = Brush.verticalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.02f),
+            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.02f)
+        )
+    )
+    
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
             shape = RoundedCornerShape(16.dp),
@@ -714,30 +1101,150 @@ fun TimePickerDialog(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+                .fillMaxWidth(0.95f)  // Limitar el ancho al 95% de la pantalla
+                .padding(8.dp)
+                .shadow(
+                    elevation = 8.dp,
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .scale(transitionScale.value)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(gradientBrush)
+                    .padding(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "Seleccionar hora",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                
-                content()
-                
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 24.dp),
-                    horizontalArrangement = Arrangement.End
+                        .padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    dismissButton()
-                    Spacer(modifier = Modifier.width(8.dp))
-                    confirmButton()
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Seleccionar hora",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+                
+                // Añadir decoración
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Contenedor para el TimePicker que permite hacer scroll si es necesario
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)  // Limitar la altura máxima
+                        .clip(RoundedCornerShape(8.dp))
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    content()
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Añadir decoración
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+                
+                // Botones de acción
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Convertir dismiss a un TextButton personalizado
+                    TextButton(
+                        onClick = { onDismissRequest() },
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cancelar",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "Cancelar",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                    
+                    // Botón de confirmar personalizado
+                    TextButton(
+                        onClick = { /* Se maneja en el confirmButton */ },
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = "Confirmar",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "Confirmar",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        
+                        // Componente invisible que captura el clic del confirmButton original
+                        Box(modifier = Modifier.size(0.dp)) {
+                            confirmButton()
+                        }
+                    }
                 }
             }
         }
