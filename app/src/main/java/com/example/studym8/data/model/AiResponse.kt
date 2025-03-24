@@ -10,7 +10,11 @@ enum class ResponseSectionType {
     SUBTITLE,
     PARAGRAPH,
     INFO_ITEM,
-    BREAK
+    BREAK,
+    CODE_START,
+    CODE_LINE,
+    CODE_END,
+    BOLD
 }
 
 /**
@@ -22,10 +26,12 @@ fun String.toResponseSections(): List<ResponseSection> {
     
     var currentType: ResponseSectionType? = null
     var currentContent = StringBuilder()
+    var inCodeBlock = false
     
     for (line in lines) {
         val trimmedLine = line.trim()
         
+        // Si es una línea vacía
         if (trimmedLine.isEmpty()) {
             // Finalizar sección actual si hay contenido
             if (currentContent.isNotEmpty() && currentType != null) {
@@ -33,6 +39,35 @@ fun String.toResponseSections(): List<ResponseSection> {
                 currentContent.clear()
                 sections.add(ResponseSection(ResponseSectionType.BREAK, ""))
             }
+            continue
+        }
+        
+        // Manejo de bloques de código
+        if (trimmedLine == "```") {
+            if (currentContent.isNotEmpty() && currentType != null) {
+                sections.add(ResponseSection(currentType, currentContent.toString().trim()))
+                currentContent.clear()
+            }
+            
+            inCodeBlock = !inCodeBlock
+            if (inCodeBlock) {
+                sections.add(ResponseSection(ResponseSectionType.CODE_START, ""))
+            } else {
+                sections.add(ResponseSection(ResponseSectionType.CODE_END, ""))
+            }
+            continue
+        }
+        
+        // Código dentro de un bloque de código
+        if (inCodeBlock) {
+            sections.add(ResponseSection(ResponseSectionType.CODE_LINE, trimmedLine))
+            continue
+        }
+        
+        // Procesar negritas en el texto
+        if (trimmedLine.contains("**")) {
+            val parts = processFormattedText(trimmedLine)
+            parts.forEach { sections.add(it) }
             continue
         }
         
@@ -55,7 +90,16 @@ fun String.toResponseSections(): List<ResponseSection> {
         // Agregar contenido sin los marcadores de formato
         val contentToAdd = when (newType) {
             ResponseSectionType.TITLE -> trimmedLine.substringAfter("# ")
-            ResponseSectionType.SUBTITLE -> trimmedLine.substringAfter("## ")
+            ResponseSectionType.SUBTITLE -> {
+                // Para sesiones, extraer "Sesión X" y el resto del título
+                if (trimmedLine.contains("Sesión")) {
+                    val sessionPart = "Sesión " + trimmedLine.substringAfter("Sesión ").substringBefore(":")
+                    val titlePart = trimmedLine.substringAfter(":")
+                    "$sessionPart:$titlePart"
+                } else {
+                    trimmedLine.substringAfter("## ")
+                }
+            }
             ResponseSectionType.INFO_ITEM -> trimmedLine.substringAfter("- ").substringAfter("* ")
             else -> trimmedLine
         }
@@ -69,6 +113,24 @@ fun String.toResponseSections(): List<ResponseSection> {
     // Agregar la última sección si hay contenido pendiente
     if (currentContent.isNotEmpty() && currentType != null) {
         sections.add(ResponseSection(currentType, currentContent.toString().trim()))
+    }
+    
+    return sections
+}
+
+/**
+ * Procesa texto que contiene marcadores de formato como negritas
+ */
+private fun processFormattedText(text: String): List<ResponseSection> {
+    val sections = mutableListOf<ResponseSection>()
+    val parts = text.split("**")
+    
+    for (i in parts.indices) {
+        if (parts[i].isNotEmpty()) {
+            // Los índices impares (1, 3, 5...) corresponden al texto entre ** (negritas)
+            val type = if (i % 2 == 1) ResponseSectionType.BOLD else ResponseSectionType.PARAGRAPH
+            sections.add(ResponseSection(type, parts[i]))
+        }
     }
     
     return sections

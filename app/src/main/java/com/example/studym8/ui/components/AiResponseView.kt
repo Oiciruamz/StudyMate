@@ -35,52 +35,9 @@ import com.example.studym8.data.model.ResponseSection
 import com.example.studym8.data.model.ResponseSectionType
 
 /**
- * Un componente simplificado para mostrar el contenido generado por IA.
+ * Un componente para mostrar las respuestas generadas por IA
+ * con un formato estructurado y mejorado visualmente.
  */
-@Composable
-fun AiResponseView(
-    content: String,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-    ) {
-        // Formatear el texto para que sea más legible
-        val paragraphs = content.split("\n\n")
-        
-        paragraphs.forEach { paragraph ->
-            if (paragraph.startsWith("#")) {
-                // Es un título
-                Text(
-                    text = paragraph.substringAfter("#").trim(),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            } else if (paragraph.startsWith("*") || paragraph.startsWith("-")) {
-                // Es una lista
-                val items = paragraph.split("\n")
-                items.forEach { item ->
-                    Text(
-                        text = item.trim(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 16.dp, bottom = 4.dp)
-                    )
-                }
-            } else {
-                // Es un párrafo normal
-                Text(
-                    text = paragraph.trim(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-            }
-        }
-    }
-}
-
 @Composable
 fun AiResponseView(
     showResponse: Boolean,
@@ -210,6 +167,42 @@ fun AiResponseView(
                                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f)
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
+                            }
+                            ResponseSectionType.CODE_START -> {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    // El contenido se agregará con CODE_LINE
+                                }
+                            }
+                            ResponseSectionType.CODE_LINE -> {
+                                Text(
+                                    text = section.content,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+                                )
+                            }
+                            ResponseSectionType.CODE_END -> {
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+                            ResponseSectionType.BOLD -> {
+                                Text(
+                                    text = section.content,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 0.dp, vertical = 0.dp)
+                                )
                             }
                         }
                     }

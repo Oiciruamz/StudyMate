@@ -22,18 +22,39 @@ class StudyPlanRepository {
         val userId = getCurrentUserId()
         
         try {
+            println("StudyPlanRepository: Intentando obtener planes para usuario: $userId")
+            
+            // Modificar la consulta para evitar el error de índice
+            // Primero filtramos por userId sin ordenar
             val querySnapshot = studyPlansCollection
                 .whereEqualTo("userId", userId)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
                 
-            return querySnapshot.documents.map { document ->
-                val data = document.data ?: mapOf()
-                StudyPlan.fromMap(data, document.id)
+            println("StudyPlanRepository: Documentos obtenidos: ${querySnapshot.documents.size}")
+            
+            val plans = querySnapshot.documents.mapNotNull { document ->
+                try {
+                    val data = document.data ?: return@mapNotNull null
+                    println("StudyPlanRepository: Documento ID: ${document.id}, Datos: $data")
+                    StudyPlan.fromMap(data, document.id)
+                } catch (e: Exception) {
+                    println("StudyPlanRepository: Error al procesar documento ${document.id}: ${e.message}")
+                    null
+                }
             }
+            
+            // Ordenar los planes en memoria en lugar de en la consulta
+            val sortedPlans = plans.sortedByDescending { 
+                it.createdAt.toDate().time 
+            }
+            
+            println("StudyPlanRepository: Planes procesados: ${sortedPlans.size}")
+            return sortedPlans
+            
         } catch (e: Exception) {
-            // En caso de error, devolver lista vacía
+            println("StudyPlanRepository: Error al obtener planes: ${e.message}")
+            e.printStackTrace()
             return emptyList()
         }
     }
@@ -62,10 +83,21 @@ class StudyPlanRepository {
                 updatedAt = Timestamp.now()
             )
             
+            println("StudyPlanRepository: Creando nuevo plan con título: ${planWithUserId.title}")
+            
             // Crear nuevo documento en Firestore
             val documentRef = studyPlansCollection.add(planWithUserId.toMap()).await()
-            return documentRef.id
+            val planId = documentRef.id
+            
+            // Actualizamos el documento con su propio ID para facilitar referencias
+            val updatedData = planWithUserId.copy(id = planId).toMap()
+            studyPlansCollection.document(planId).set(updatedData).await()
+            
+            println("StudyPlanRepository: Plan creado con ID: $planId")
+            return planId
         } catch (e: Exception) {
+            println("StudyPlanRepository: Error al crear plan: ${e.message}")
+            e.printStackTrace()
             return null
         }
     }
@@ -115,12 +147,28 @@ class StudyPlanRepository {
             val durationHours = (durationMs / (1000 * 60 * 60)).toInt()
             val durationMinutes = ((durationMs % (1000 * 60 * 60)) / (1000 * 60)).toInt()
 
-            // Crear el prompt para la IA
+            // Crear el prompt para la IA mejorado para más consistencia
             val prompt = """
                 Crea un plan de estudio detallado para el tema '$subject' con duración de $durationHours horas y $durationMinutes minutos.
                 El plan debe seguir la metodología Pomodoro (25 minutos de estudio y 5 minutos de descanso).
-                Incluye actividades específicas para cada sesión de estudio, como lecturas, ejercicios prácticos, y repasos.
-                Proporciona una estructura clara dividida en sesiones, con objetivos específicos para cada una.
+                
+                Estructura tu respuesta siguiendo EXACTAMENTE este formato para cada sesión:
+                
+                # Plan de Estudio: $subject
+                
+                ## Sesión 1: [Título descriptivo]
+                [Descripción detallada de la sesión, incluyendo objetivos, actividades y materiales]
+                
+                ## Sesión 2: [Título descriptivo]
+                [Descripción detallada de la sesión, incluyendo objetivos, actividades y materiales]
+                
+                [Continuar con el número de sesiones necesarias para completar el tiempo disponible]
+                
+                # Recomendaciones finales
+                [Breves recomendaciones para sacar el máximo provecho del estudio]
+                
+                Asegúrate de que cada sesión tenga una duración de 25 minutos y esté claramente etiquetada como "Sesión X".
+                Cada sesión debe tener un título descriptivo y una explicación detallada de lo que el estudiante debe hacer.
             """.trimIndent()
 
             // Crear el documento para la extensión de Gemini con el ID del usuario actual

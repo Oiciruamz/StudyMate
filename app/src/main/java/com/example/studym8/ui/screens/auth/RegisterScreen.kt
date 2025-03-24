@@ -1,34 +1,60 @@
-package com.example.studym8
+package com.example.studym8.ui.screens.auth
 
-import android.content.Intent
-import android.widget.Toast
 import android.app.Activity
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.studym8.R
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
@@ -49,6 +75,8 @@ fun RegisterScreen(
     var nombre by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var passwordVisible by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
 
     val context = LocalContext.current
     val auth = remember { Firebase.auth }
@@ -56,12 +84,11 @@ fun RegisterScreen(
     // Configurar el cliente de Google Sign-In
     val googleSignInClient = remember {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(context.getString(R.string.default_web_client_id)) // IMPORTANTE: Usa este método
+            .requestIdToken(context.getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
         GoogleSignIn.getClient(context, gso)
     }
-
 
     // Resultado del inicio de sesión con Google
     val googleSignInLauncher = rememberLauncherForActivityResult(
@@ -81,6 +108,7 @@ fun RegisterScreen(
             if (account != null && account.idToken != null) {
                 firebaseAuthWithGoogle(account.idToken!!, auth, onSuccess = {
                     isLoading = false
+                    Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
                     onRegisterSuccess()
                 }, onError = { exception ->
                     isLoading = false
@@ -93,7 +121,6 @@ fun RegisterScreen(
             }
         } catch (e: ApiException) {
             isLoading = false
-            // Log detallado para ayudar en la depuración
             Log.e("GoogleSignIn", "Error de Google Sign In, código: ${e.statusCode}", e)
             errorMessage = "Error al registrar con Google (${e.statusCode}): ${e.localizedMessage}"
         }
@@ -102,19 +129,24 @@ fun RegisterScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(32.dp)
+            .verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Imagen studym8
-        val image: Painter = painterResource(id = R.drawable.studymate)
-        Image(painter = image, contentDescription = "Imagen de bienvenida", modifier = Modifier.size(180.dp))
+        Image(
+            painter = painterResource(id = R.drawable.studymate),
+            contentDescription = "Imagen de bienvenida",
+            modifier = Modifier.size(180.dp)
+        )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         // Texto de "Regístrate para continuar"
         Text(
             "Regístrate para continuar",
-            fontSize = 18.sp,
+            fontSize = 20.sp,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.align(Alignment.Start)
         )
 
@@ -130,85 +162,145 @@ fun RegisterScreen(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .padding(0.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White,
+                contentColor = Color.Black
+            ),
             shape = MaterialTheme.shapes.medium,
             border = BorderStroke(1.dp, Color.Gray),
             enabled = !isLoading
         ) {
-            val googleLogo: Painter = painterResource(id = R.drawable.google)
-            Image(painter = googleLogo, contentDescription = "Logo de Google", modifier = Modifier.size(30.dp))
+            Image(
+                painter = painterResource(id = R.drawable.google),
+                contentDescription = "Logo de Google",
+                modifier = Modifier.size(24.dp)
+            )
             Spacer(modifier = Modifier.width(16.dp))
-            Text("Regístrate con Google", color = Color.Black, fontSize = 16.sp)
+            Text(
+                "Regístrate con Google",
+                fontSize = 16.sp
+            )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // Cuadro de nombre
-        Text("Nombre*", fontSize = 16.sp, modifier = Modifier.align(Alignment.Start))
+        Text(
+            "Nombre*",
+            fontSize = 16.sp,
+            modifier = Modifier.align(Alignment.Start),
+            color = MaterialTheme.colorScheme.onBackground
+        )
         OutlinedTextField(
             value = nombre,
             onValueChange = { nombre = it },
-            label = { Text(text = "Nombre") },
+            label = { Text("Nombre completo") },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .align(Alignment.Start),
+                .padding(vertical = 8.dp),
             shape = MaterialTheme.shapes.medium,
-            enabled = !isLoading
+            enabled = !isLoading,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Next
+            ),
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Icono de Persona"
+                )
+            },
+            singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Cuadro de email
-        Text("Email*", fontSize = 16.sp, modifier = Modifier.align(Alignment.Start))
+        Text(
+            "Email*",
+            fontSize = 16.sp,
+            modifier = Modifier.align(Alignment.Start),
+            color = MaterialTheme.colorScheme.onBackground
+        )
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email") },
+            label = { Text("Correo electrónico") },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .align(Alignment.Start),
+                .padding(vertical = 8.dp),
             shape = MaterialTheme.shapes.medium,
-            enabled = !isLoading
+            enabled = !isLoading,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
+            ),
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Email,
+                    contentDescription = "Icono de Email"
+                )
+            },
+            singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Cuadro de contraseña
-        Text("Contraseña*", fontSize = 16.sp, modifier = Modifier.align(Alignment.Start))
+        Text(
+            "Contraseña*",
+            fontSize = 16.sp,
+            modifier = Modifier.align(Alignment.Start),
+            color = MaterialTheme.colorScheme.onBackground
+        )
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Contraseña") },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .align(Alignment.Start),
+                .padding(vertical = 8.dp),
             shape = MaterialTheme.shapes.medium,
-            visualTransformation = PasswordVisualTransformation(),
-            enabled = !isLoading
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            enabled = !isLoading,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                    )
+                }
+            },
+            singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Mostrar mensaje de error si existe
         errorMessage?.let {
             Text(
                 text = it,
-                color = Color.Red,
+                color = MaterialTheme.colorScheme.error,
                 fontSize = 14.sp,
-                modifier = Modifier.align(Alignment.Start)
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(top = 4.dp)
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Botón de regístrate
         Button(
             onClick = {
                 isLoading = true
+                errorMessage = null
                 registerWithEmailPassword(
                     email = email,
                     password = password,
@@ -216,28 +308,32 @@ fun RegisterScreen(
                     auth = auth,
                     onSuccess = {
                         isLoading = false
+                        Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
                         onRegisterSuccess()
                     },
                     onError = { exception ->
                         isLoading = false
-                        errorMessage = exception.localizedMessage
+                        errorMessage = exception.localizedMessage ?: "Error al registrar"
                     }
                 )
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1338BE)),
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
             shape = MaterialTheme.shapes.medium,
             enabled = !isLoading && email.isNotEmpty() && password.isNotEmpty() && nombre.isNotEmpty()
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text("Regístrate", color = Color.White, fontSize = 16.sp)
+                Text("Regístrate", fontSize = 16.sp)
             }
         }
 
@@ -246,12 +342,20 @@ fun RegisterScreen(
         // "¿Ya tienes una cuenta? Inicia sesión aquí"
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("¿Ya tienes una cuenta? ")
+            Text(
+                "¿Ya tienes una cuenta? ",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground
+            )
             Text(
                 "Inicia sesión aquí",
-                color = Color(0xFF1338BE),
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                textDecoration = TextDecoration.Underline,
                 modifier = Modifier.clickable(enabled = !isLoading) {
                     navigateToLogin()
                 }

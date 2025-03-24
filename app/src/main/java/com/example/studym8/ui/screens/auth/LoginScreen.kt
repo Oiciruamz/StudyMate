@@ -1,39 +1,62 @@
-package com.example.studym8
+package com.example.studym8.ui.screens.auth
 
-import android.content.Intent
-import android.widget.Toast
 import android.app.Activity
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.studym8.R
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
@@ -51,6 +74,8 @@ fun LoginScreen(
     var rememberMe by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var passwordVisible by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
 
     val context = LocalContext.current
     val auth = remember { Firebase.auth }
@@ -107,19 +132,24 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(32.dp)
+            .verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Imagen studym8
-        val image: Painter = painterResource(id = R.drawable.studymate)
-        Image(painter = image, contentDescription = "Imagen de bienvenida", modifier = Modifier.size(180.dp))
+        Image(
+            painter = painterResource(id = R.drawable.studymate),
+            contentDescription = "Imagen de bienvenida",
+            modifier = Modifier.size(180.dp)
+        )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         // Texto de "Iniciar sesión para continuar"
         Text(
             "Iniciar sesión para continuar",
-            fontSize = 18.sp,
+            fontSize = 20.sp,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.align(Alignment.Start)
         )
 
@@ -135,63 +165,105 @@ fun LoginScreen(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .padding(0.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White,
+                contentColor = Color.Black
+            ),
             shape = MaterialTheme.shapes.medium,
             border = BorderStroke(1.dp, Color.Gray),
             enabled = !isLoading
         ) {
-            val googleLogo: Painter = painterResource(id = R.drawable.google)
-            Image(painter = googleLogo, contentDescription = "Logo de Google", modifier = Modifier.size(30.dp))
+            Image(
+                painter = painterResource(id = R.drawable.google),
+                contentDescription = "Logo de Google",
+                modifier = Modifier.size(24.dp)
+            )
             Spacer(modifier = Modifier.width(16.dp))
-            Text("Iniciar sesión con Google", color = Color.Black, fontSize = 16.sp)
+            Text(
+                "Iniciar sesión con Google",
+                fontSize = 16.sp
+            )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // Cuadro de email
-        Text("Email*", fontSize = 16.sp, modifier = Modifier.align(Alignment.Start))
+        Text(
+            "Email*",
+            fontSize = 16.sp,
+            modifier = Modifier.align(Alignment.Start),
+            color = MaterialTheme.colorScheme.onBackground
+        )
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email") },
+            label = { Text("Correo electrónico") },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .align(Alignment.Start),
+                .padding(vertical = 8.dp),
             shape = MaterialTheme.shapes.medium,
-            enabled = !isLoading
+            enabled = !isLoading,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
+            ),
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Email,
+                    contentDescription = "Email Icon"
+                )
+            },
+            singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Cuadro de contraseña
-        Text("Contraseña*", fontSize = 16.sp, modifier = Modifier.align(Alignment.Start))
+        Text(
+            "Contraseña*",
+            fontSize = 16.sp,
+            modifier = Modifier.align(Alignment.Start),
+            color = MaterialTheme.colorScheme.onBackground
+        )
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Contraseña") },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .align(Alignment.Start),
+                .padding(vertical = 8.dp),
             shape = MaterialTheme.shapes.medium,
-            visualTransformation = PasswordVisualTransformation(),
-            enabled = !isLoading
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            enabled = !isLoading,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+                    )
+                }
+            },
+            singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Mostrar mensaje de error si existe
         errorMessage?.let {
             Text(
                 text = it,
-                color = Color.Red,
+                color = MaterialTheme.colorScheme.error,
                 fontSize = 14.sp,
-                modifier = Modifier.align(Alignment.Start)
+                modifier = Modifier
+                    .align(Alignment.Start)
+                    .padding(top = 4.dp)
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         // "Recuérdame" y "Olvidé mi contraseña"
@@ -206,26 +278,30 @@ fun LoginScreen(
                     onCheckedChange = { rememberMe = it },
                     enabled = !isLoading
                 )
-                Text("Recuérdame", fontSize = 15.sp)
+                Text(
+                    "Recuérdame",
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
             }
 
             TextButton(
                 onClick = {
                     // Acción para recuperar contraseña
-                    // Podrías implementar esto más adelante
                     Toast.makeText(context, "Función en desarrollo", Toast.LENGTH_SHORT).show()
                 },
                 enabled = !isLoading
             ) {
-                Text("Olvidé mi contraseña",
-                    color = Color(0xFF1338BE),
+                Text(
+                    "Olvidé mi contraseña",
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 15.sp,
                     style = TextStyle(textDecoration = TextDecoration.Underline)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // Botón de iniciar sesión
         Button(
@@ -241,11 +317,7 @@ fun LoginScreen(
                     auth = auth,
                     onSuccess = {
                         isLoading = false
-
-                        // Mostrar toast de éxito
                         Toast.makeText(context, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show()
-
-                        // Navegar a la pantalla de inicio
                         onLoginSuccess()
                     },
                     onError = { exception ->
@@ -256,18 +328,21 @@ fun LoginScreen(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1338BE)),
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
             shape = MaterialTheme.shapes.medium,
             enabled = !isLoading && email.isNotEmpty() && password.isNotEmpty()
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text("Iniciar sesión", color = Color.White, fontSize = 16.sp)
+                Text("Iniciar sesión", fontSize = 16.sp)
             }
         }
 
@@ -284,7 +359,7 @@ fun LoginScreen(
             modifier = Modifier.padding(8.dp),
             style = TextStyle(
                 fontSize = 16.sp,
-                color = Color(0xFF1338BE),
+                color = MaterialTheme.colorScheme.primary,
                 textDecoration = TextDecoration.Underline
             )
         )
@@ -305,11 +380,8 @@ private fun loginWithEmailPassword(
             if (task.isSuccessful) {
                 // Si se seleccionó "Recuérdame", podrías guardar esta preferencia
                 // en SharedPreferences u otro mecanismo de almacenamiento
-
-                // Inicio de sesión exitoso
                 onSuccess()
             } else {
-                // Error en inicio de sesión
                 onError(task.exception ?: Exception("Error al iniciar sesión"))
             }
         }
@@ -327,10 +399,8 @@ private fun firebaseAuthWithGoogle(
     auth.signInWithCredential(credential)
         .addOnCompleteListener { task ->
             if (task.isSuccessful) {
-                // Inicio de sesión exitoso
                 onSuccess()
             } else {
-                // Error en inicio de sesión
                 onError(task.exception ?: Exception("Error al iniciar sesión con Google"))
             }
         }

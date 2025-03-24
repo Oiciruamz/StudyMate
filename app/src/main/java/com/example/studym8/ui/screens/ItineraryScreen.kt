@@ -292,42 +292,10 @@ fun ItineraryScreen(
                         // Botones de acción
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.Center
                         ) {
-                            // Botón para crear manualmente
-                            Button(
-                                onClick = {
-                                    if (subject.isNotBlank() && startDate != null && endDate != null && currentUser != null) {
-                                        val title = "Estudio de $subject"
-                                        val description = "Plan de estudio para $subject"
-                                        
-                                        // Llamar al ViewModel para crear el plan
-                                        studyPlanViewModel.createStudyPlan(
-                                            title = title,
-                                            subject = subject,
-                                            description = description,
-                                            startDateTime = startDate!!,
-                                            endDateTime = endDate!!,
-                                            onSuccess = { planId -> 
-                                                onNavigateToStudyPlanDetail(planId)
-                                            }, 
-                                            onError = { /* Manejar error */ }
-                                        )
-                                        
-                                        // Limpiar formulario
-                                        subject = ""
-                                        startDate = null
-                                        endDate = null
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                enabled = subject.isNotBlank() && startDate != null && endDate != null && !isLoading
-                            ) {
-                                Text("Crear Plan")
-                            }
-                            
                             // Botón para generar con IA
-                            FloatingActionButton(
+                            Button(
                                 onClick = {
                                     if (subject.isNotBlank() && currentUser != null) {
                                         if (startDate != null && endDate != null) {
@@ -344,15 +312,18 @@ fun ItineraryScreen(
                                     }
                                 },
                                 modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp)
                                     .scale(if (!isLoading) scale else 1f)
-                                    .rotate(rotation)
                                     .shadow(
                                         elevation = 6.dp,
                                         shape = RoundedCornerShape(50),
                                         spotColor = MaterialTheme.colorScheme.primary
                                     ),
-                                containerColor = MaterialTheme.colorScheme.tertiary,
-                                contentColor = MaterialTheme.colorScheme.onTertiary
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiary,
+                                    contentColor = MaterialTheme.colorScheme.onTertiary
+                                )
                             ) {
                                 if (isLoading) {
                                     CircularProgressIndicator(
@@ -362,11 +333,18 @@ fun ItineraryScreen(
                                             .rotate(rotation)
                                     )
                                 } else {
-                                    Icon(
-                                        imageVector = Icons.Default.AutoAwesome,
-                                        contentDescription = "Generar con IA",
-                                        modifier = Modifier.size(24.dp)
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = "Generar con IA",
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Generar Plan de Estudio con IA")
+                                    }
                                 }
                             }
                         }
@@ -430,7 +408,10 @@ fun ItineraryScreen(
                             
                             // Mostrar contenido de IA con la vista mejorada
                             AiResponseView(
-                                content = aiResponse ?: "",
+                                showResponse = aiResponse != null,
+                                aiResponse = aiResponse,
+                                onCloseClick = {},
+                                formatAiResponse = studyPlanViewModel::formatAIResponse,
                                 modifier = Modifier.fillMaxWidth()
                             )
                             
@@ -591,6 +572,12 @@ fun ItineraryScreen(
                         startDatePickerState.selectedDateMillis?.let { millis ->
                             val calendar = Calendar.getInstance().apply {
                                 timeInMillis = millis
+                                // Asegurarse de que la fecha es exactamente la seleccionada
+                                set(Calendar.HOUR_OF_DAY, 0)
+                                set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                                
                                 if (startDate != null) {
                                     val oldCal = Calendar.getInstance().apply { time = startDate!! }
                                     set(Calendar.HOUR_OF_DAY, oldCal.get(Calendar.HOUR_OF_DAY))
@@ -625,6 +612,12 @@ fun ItineraryScreen(
                         endDatePickerState.selectedDateMillis?.let { millis ->
                             val calendar = Calendar.getInstance().apply {
                                 timeInMillis = millis
+                                // Asegurarse de que la fecha es exactamente la seleccionada
+                                set(Calendar.HOUR_OF_DAY, 0)
+                                set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                                
                                 if (endDate != null) {
                                     val oldCal = Calendar.getInstance().apply { time = endDate!! }
                                     set(Calendar.HOUR_OF_DAY, oldCal.get(Calendar.HOUR_OF_DAY))

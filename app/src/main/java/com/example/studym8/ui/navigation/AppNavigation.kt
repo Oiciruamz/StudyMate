@@ -1,9 +1,18 @@
 package com.example.studym8.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -16,8 +25,8 @@ import com.example.studym8.ui.screens.ItineraryScreen
 import com.example.studym8.ui.screens.StudyPlanDetailScreen
 import com.example.studym8.ui.viewmodel.AuthViewModel
 import com.example.studym8.ui.viewmodel.StudyPlanViewModel
-import com.example.studym8.LoginScreen
-import com.example.studym8.RegisterScreen
+import com.example.studym8.ui.screens.auth.LoginScreen
+import com.example.studym8.ui.screens.auth.RegisterScreen
 import com.example.studym8.ui.navigation.MainScreenNavigator
 
 /**
@@ -51,8 +60,25 @@ fun AppNavigation(
     studyPlanViewModel: StudyPlanViewModel,
     navController: NavHostController = rememberNavController()
 ) {
+    // Estado para controlar si estamos verificando la autenticación
+    var isCheckingAuth by remember { mutableStateOf(true) }
+    
     // Observar el estado de autenticación
     val currentUser by authViewModel.currentUser.collectAsState(initial = null)
+    
+    // Verificar el estado de autenticación al inicio
+    LaunchedEffect(Unit) {
+        authViewModel.checkCurrentUser()
+        isCheckingAuth = false
+    }
+    
+    // Mostrar pantalla de carga mientras verificamos la autenticación
+    if (isCheckingAuth) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
     
     // Determinar la ruta inicial según el estado de autenticación
     val startDestination = if (currentUser != null) NavigationRoutes.MAIN else NavigationRoutes.LOGIN
@@ -65,7 +91,9 @@ fun AppNavigation(
             navController.navigate(NavigationRoutes.LOGIN) {
                 popUpTo(0) { inclusive = true }
             }
-        } else if (currentUser != null && navController.currentDestination?.route == NavigationRoutes.LOGIN) {
+        } else if (currentUser != null && 
+                 (navController.currentDestination?.route == NavigationRoutes.LOGIN ||
+                  navController.currentDestination?.route == NavigationRoutes.REGISTER)) {
             // Si el usuario inicia sesión, navegar a la pantalla principal
             navController.navigate(NavigationRoutes.MAIN) {
                 popUpTo(0) { inclusive = true }

@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.studym8.data.model.ResponseSection
 import com.example.studym8.data.model.ResponseSectionType
 import com.example.studym8.data.model.StudyPlan
+import com.example.studym8.data.model.StudySession
+import com.example.studym8.data.model.toResponseSections
 import com.example.studym8.data.repository.StudyPlanRepository
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,14 +53,26 @@ class StudyPlanViewModel : ViewModel() {
     fun loadStudyPlans() {
         viewModelScope.launch {
             _isLoading.value = true
+            _error.value = null
+            
             try {
+                println("StudyPlanViewModel: Iniciando carga de planes de estudio")
                 val plans = repository.getStudyPlans()
+                println("StudyPlanViewModel: Planes obtenidos: ${plans.size}")
+                
+                if (plans.isNotEmpty()) {
+                    println("StudyPlanViewModel: Primer plan - Título: ${plans[0].title}, ID: ${plans[0].id}")
+                }
+                
                 _studyPlans.value = plans
-                _error.value = null
             } catch (e: Exception) {
+                println("StudyPlanViewModel: Error al cargar planes: ${e.message}")
+                e.printStackTrace()
                 _error.value = "Error al cargar los planes de estudio: ${e.message}"
+                _studyPlans.value = emptyList()
             } finally {
                 _isLoading.value = false
+                println("StudyPlanViewModel: Carga finalizada, planes: ${_studyPlans.value.size}")
             }
         }
     }
@@ -69,6 +83,25 @@ class StudyPlanViewModel : ViewModel() {
             try {
                 val plan = repository.getStudyPlanById(planId)
                 _selectedPlan.value = plan
+                
+                // Verificar si el plan es generado por IA, tiene respuesta AI pero no tiene sesiones
+                if (plan != null && plan.aiGenerated && plan.aiResponse.isNotBlank() && plan.sessions.isEmpty()) {
+                    // Generar sesiones automáticamente
+                    val sessionsFromAI = parseSessionsFromAIResponse(plan.aiResponse)
+                    
+                    if (sessionsFromAI.isNotEmpty()) {
+                        // Actualizar el plan con las sesiones generadas
+                        val updatedPlan = plan.copy(sessions = sessionsFromAI)
+                        
+                        // Actualizar en el repositorio
+                        val success = repository.updateStudyPlan(updatedPlan)
+                        if (success) {
+                            // Actualizar el plan seleccionado
+                            _selectedPlan.value = updatedPlan
+                        }
+                    }
+                }
+                
                 _error.value = null
             } catch (e: Exception) {
                 _error.value = "Error al obtener el plan de estudio: ${e.message}"
@@ -239,6 +272,214 @@ class StudyPlanViewModel : ViewModel() {
         }
     }
     
+    // Método para actualizar el estado de una sesión específica
+    fun updateSessionStatus(planId: String, sessionId: String, isCompleted: Boolean) {
+        viewModelScope.launch {
+            try {
+                _selectedPlan.value?.let { currentPlan ->
+                    if (currentPlan.id == planId) {
+                        // Actualizar la sesión en la lista de sesiones
+                        val updatedSessions = currentPlan.sessions.map { session ->
+                            if (session.id == sessionId) {
+                                session.copy(isCompleted = isCompleted)
+                            } else {
+                                session
+                            }
+                        }
+                        
+                        // Calcular el nuevo porcentaje de completado
+                        val completedSessions = updatedSessions.count { it.isCompleted }
+                        val totalSessions = updatedSessions.size
+                        val newCompletionRate = if (totalSessions > 0) {
+                            (completedSessions * 100) / totalSessions
+                        } else {
+                            0
+                        }
+                        
+                        // Determinar si el plan está completado
+                        val allCompleted = updatedSessions.all { it.isCompleted }
+                        
+                        // Crear el plan actualizado
+                        val updatedPlan = currentPlan.copy(
+                            sessions = updatedSessions,
+                            completionRate = newCompletionRate,
+                            isCompleted = allCompleted
+                        )
+                        
+                        // Actualizar el plan en el repositorio
+                        val success = repository.updateStudyPlan(updatedPlan)
+                        if (success) {
+                            // Actualizar el plan seleccionado
+                            _selectedPlan.value = updatedPlan
+                            
+                            // También actualizar el estado general de completado
+                            repository.updateCompletionStatus(planId, allCompleted, newCompletionRate)
+                            
+                            // Recargar la lista de planes
+                            loadStudyPlans()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _error.value = "Error al actualizar el estado de la sesión: ${e.message}"
+            }
+        }
+    }
+    
+    // Método para generar sesiones a partir del plan de estudio y la respuesta de IA
+    fun generateSessionsFromAIResponse(planId: String) {
+        viewModelScope.launch {
+            try {
+                _selectedPlan.value?.let { currentPlan ->
+                    if (currentPlan.id == planId && currentPlan.aiGenerated && currentPlan.aiResponse.isNotBlank()) {
+                        // Extraer sesiones de la respuesta de IA
+                        val sessions = parseSessionsFromAIResponse(currentPlan.aiResponse)
+                        
+                        // Actualizar el plan con las sesiones generadas
+                        val updatedPlan = currentPlan.copy(sessions = sessions)
+                        
+                        // Actualizar en el repositorio
+                        val success = repository.updateStudyPlan(updatedPlan)
+                        if (success) {
+                            // Actualizar el plan seleccionado
+                            _selectedPlan.value = updatedPlan
+                            
+                            // Recargar la lista de planes
+                            loadStudyPlans()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                _error.value = "Error al generar sesiones: ${e.message}"
+            }
+        }
+    }
+    
+    // Método auxiliar para extraer las sesiones del texto generado por IA
+    private fun parseSessionsFromAIResponse(aiResponse: String): List<StudySession> {
+        val sessions = mutableListOf<StudySession>()
+        
+        try {
+            // Buscar el formato específico de secciones "## Sesión X: [Título]"
+            val sessionRegex = """##\s+Sesión\s+(\d+):\s+(.+?)(?=##\s+Sesión\s+\d+:|${'$'})""".toRegex(RegexOption.DOT_MATCHES_ALL)
+            val matches = sessionRegex.findAll(aiResponse)
+            
+            matches.forEach { matchResult ->
+                val sessionNumber = matchResult.groupValues[1]
+                val fullContent = matchResult.groupValues[2].trim()
+                
+                // Extraer el título (primera línea) y el contenido (resto)
+                val title = fullContent.substringBefore("\n").trim()
+                val content = fullContent.substringAfter("\n", "").trim()
+                
+                val fullTitle = if (title.isNotBlank()) {
+                    "Sesión $sessionNumber: $title"
+                } else {
+                    "Sesión $sessionNumber"
+                }
+                
+                // Crear la sesión y añadirla a la lista
+                val session = StudySession(
+                    id = UUID.randomUUID().toString(),
+                    title = fullTitle,
+                    duration = 25, // Duración estándar de un pomodoro
+                    isCompleted = false,
+                    notes = if (content.isNotBlank()) content else fullContent
+                )
+                
+                sessions.add(session)
+            }
+            
+            // Si no se encontraron sesiones con el regex principal, intentar con el regex alternativo
+            if (sessions.isEmpty()) {
+                // Fallback al método anterior para mantener compatibilidad
+                val fallbackRegex = """(?:Sesión|Pomodoro)\s+(\d+)(?:[:-]\s*|\n)(.+?)(?=(?:Sesión|Pomodoro)\s+\d+|${'$'})""".toRegex(RegexOption.DOT_MATCHES_ALL)
+                val fallbackMatches = fallbackRegex.findAll(aiResponse)
+                
+                fallbackMatches.forEach { matchResult ->
+                    val sessionNumber = matchResult.groupValues[1]
+                    val sessionContent = matchResult.groupValues[2].trim()
+                    
+                    // Extraer el título de la sesión (primera línea o hasta el primer punto)
+                    val title = if (sessionContent.contains("\n")) {
+                        sessionContent.substringBefore("\n").trim()
+                    } else {
+                        sessionContent.substringBefore(".").trim()
+                    }
+                    
+                    // Crear la sesión y añadirla a la lista
+                    val session = StudySession(
+                        id = UUID.randomUUID().toString(),
+                        title = "Sesión $sessionNumber: $title",
+                        duration = 25, // Duración estándar de un pomodoro
+                        isCompleted = false,
+                        notes = sessionContent
+                    )
+                    
+                    sessions.add(session)
+                }
+            }
+            
+            // Si aún no se encontraron sesiones, intentar dividir por líneas como último recurso
+            if (sessions.isEmpty()) {
+                // Dividir por líneas y buscar patrones típicos de sesiones
+                val lines = aiResponse.split("\n")
+                var currentSessionContent = ""
+                var currentSessionTitle = ""
+                var currentSessionNumber = 0
+                
+                for (line in lines) {
+                    val trimmedLine = line.trim()
+                    
+                    if (trimmedLine.matches(""".*?(?:Sesión|Pomodoro|SESIÓN|POMODORO)\s*\d+.*""".toRegex())) {
+                        // Si ya teníamos una sesión anterior, guardarla
+                        if (currentSessionTitle.isNotBlank()) {
+                            sessions.add(
+                                StudySession(
+                                    id = UUID.randomUUID().toString(),
+                                    title = currentSessionTitle,
+                                    duration = 25,
+                                    isCompleted = false,
+                                    notes = currentSessionContent
+                                )
+                            )
+                        }
+                        
+                        // Intentar extraer el número de sesión
+                        val numberRegex = """(?:Sesión|Pomodoro|SESIÓN|POMODORO)\s*(\d+)""".toRegex()
+                        val numberMatch = numberRegex.find(trimmedLine)
+                        currentSessionNumber = numberMatch?.groupValues?.get(1)?.toIntOrNull() ?: (currentSessionNumber + 1)
+                        
+                        // Iniciar nueva sesión
+                        currentSessionTitle = "Sesión $currentSessionNumber"
+                        currentSessionContent = trimmedLine
+                    } else if (currentSessionTitle.isNotBlank()) {
+                        // Añadir línea a la sesión actual
+                        currentSessionContent += "\n$trimmedLine"
+                    }
+                }
+                
+                // Añadir la última sesión si existe
+                if (currentSessionTitle.isNotBlank()) {
+                    sessions.add(
+                        StudySession(
+                            id = UUID.randomUUID().toString(),
+                            title = currentSessionTitle,
+                            duration = 25,
+                            isCompleted = false,
+                            notes = currentSessionContent
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            println("Error al analizar sesiones: ${e.message}")
+            e.printStackTrace()
+        }
+        
+        return sessions
+    }
+    
     // Métodos auxiliares para formatear datos
     
     fun formatTimestamp(timestamp: Timestamp?): String {
@@ -281,91 +522,7 @@ class StudyPlanViewModel : ViewModel() {
     
     // Método para formatear la respuesta de la IA en secciones
     fun formatAIResponse(response: String): List<ResponseSection> {
-        val sections = mutableListOf<ResponseSection>()
-        val lines = response.split("\n")
-        var currentSection = ""
-        var inList = false
-
-        for (line in lines) {
-            val trimmedLine = line.trim()
-            
-            when {
-                trimmedLine.startsWith("# ") -> {
-                    // Agregar sección anterior si existe
-                    if (currentSection.isNotBlank()) {
-                        sections.add(ResponseSection(ResponseSectionType.PARAGRAPH, currentSection))
-                        currentSection = ""
-                    }
-                    sections.add(ResponseSection(ResponseSectionType.TITLE, trimmedLine.substring(2)))
-                }
-                trimmedLine.startsWith("## ") -> {
-                    // Agregar sección anterior si existe
-                    if (currentSection.isNotBlank()) {
-                        sections.add(ResponseSection(ResponseSectionType.PARAGRAPH, currentSection))
-                        currentSection = ""
-                    }
-                    sections.add(ResponseSection(ResponseSectionType.SUBTITLE, trimmedLine.substring(3)))
-                }
-                trimmedLine.startsWith("**") && trimmedLine.endsWith("**") -> {
-                    // Agregar sección anterior si existe
-                    if (currentSection.isNotBlank()) {
-                        sections.add(ResponseSection(ResponseSectionType.PARAGRAPH, currentSection))
-                        currentSection = ""
-                    }
-                    val content = trimmedLine.substring(2, trimmedLine.length - 2)
-                    sections.add(ResponseSection(ResponseSectionType.SUBTITLE, content))
-                }
-                trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ") -> {
-                    // Si no estábamos en una lista, agregar la sección anterior
-                    if (!inList && currentSection.isNotBlank()) {
-                        sections.add(ResponseSection(ResponseSectionType.PARAGRAPH, currentSection))
-                        currentSection = ""
-                    }
-                    inList = true
-
-                    // Agregar el ítem de la lista
-                    val content = trimmedLine.substring(2)
-                    sections.add(ResponseSection(ResponseSectionType.INFO_ITEM, content))
-                }
-                trimmedLine.isEmpty() -> {
-                    // Agregar la sección actual si existe
-                    if (currentSection.isNotBlank()) {
-                        sections.add(ResponseSection(ResponseSectionType.PARAGRAPH, currentSection))
-                        currentSection = ""
-                    }
-
-                    // Salir de la lista si estábamos en una
-                    if (inList) {
-                        inList = false
-                        sections.add(ResponseSection(ResponseSectionType.BREAK, ""))
-                    }
-                }
-                else -> {
-                    // Si estábamos en una lista, salir de ella
-                    if (inList) {
-                        inList = false
-                        // Iniciar una nueva sección de párrafo
-                        if (currentSection.isNotBlank()) {
-                            currentSection += " "
-                        }
-                        currentSection += trimmedLine
-                    } else {
-                        // Continuar o iniciar un párrafo
-                        if (currentSection.isNotBlank()) {
-                            currentSection += " "
-                        }
-                        currentSection += trimmedLine
-                    }
-                }
-            }
-        }
-
-        // Agregar la última sección si quedó algo pendiente
-        if (currentSection.isNotBlank()) {
-            sections.add(ResponseSection(ResponseSectionType.PARAGRAPH, currentSection))
-        }
-
-        return sections
+        return response.toResponseSections()
     }
     
     fun toggleAIResponseVisibility(show: Boolean) {
