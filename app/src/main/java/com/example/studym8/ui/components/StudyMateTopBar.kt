@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,7 +42,8 @@ fun StudyMateTopBar(
     onBackClick: () -> Unit = {},
     title: String = "",
     actions: List<TopBarAction> = emptyList(),
-    onLogoutClick: () -> Unit = {}
+    onLogoutClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     
@@ -97,6 +99,16 @@ fun StudyMateTopBar(
             }
         },
         actions = {
+            // Icono de notificaciones
+            if (user != null) {
+                IconButton(onClick = onNotificationsClick) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = "Notificaciones"
+                    )
+                }
+            }
+            
             // Acciones personalizadas
             actions.forEach { action ->
                 IconButton(onClick = action.onClick) {

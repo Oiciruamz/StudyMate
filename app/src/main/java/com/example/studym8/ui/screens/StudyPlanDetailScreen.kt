@@ -145,7 +145,7 @@ fun StudyPlanDetailScreen(
                         .padding(16.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Encabezado con título y chip
+                    // Encabezado con título e icono de estado
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -155,36 +155,9 @@ fun StudyPlanDetailScreen(
                     ) {
                         Text(
                             text = plan.title,
-                            style = MaterialTheme.typography.headlineMedium,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
-
-                        // Crear el chip basado en el estado del plan
-                        val chipText = when {
-                            plan.isCompleted -> "Completado"
-                            plan.aiGenerated -> "Generado por IA"
-                            else -> "En progreso"
-                        }
-                        
-                        val chipColor = when {
-                            plan.isCompleted -> Color(0xFF4CAF50) // Verde
-                            plan.aiGenerated -> Color(0xFF2196F3) // Azul
-                            else -> Color(0xFFFFA000) // Ámbar
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .background(chipColor, shape = RoundedCornerShape(16.dp))
-                                .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp))
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = chipText,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.White
-                            )
-                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))

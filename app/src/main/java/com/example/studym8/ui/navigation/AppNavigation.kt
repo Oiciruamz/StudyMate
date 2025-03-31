@@ -66,6 +66,7 @@ object NavigationRoutes {
 fun AppNavigation(
     authViewModel: AuthViewModel,
     studyPlanViewModel: StudyPlanViewModel,
+    onNavigateFromNotification: String? = null,
     navController: NavHostController = rememberNavController()
 ) {
     // Estado para controlar si estamos verificando la autenticación
@@ -91,20 +92,34 @@ fun AppNavigation(
     // Determinar la ruta inicial según el estado de autenticación
     val startDestination = if (currentUser != null) NavigationRoutes.MAIN else NavigationRoutes.LOGIN
     
-    // Efecto para navegar según el estado de autenticación
-    LaunchedEffect(currentUser) {
+    // Efecto para navegar según el estado de autenticación y notificaciones
+    LaunchedEffect(currentUser, onNavigateFromNotification) {
         if (currentUser == null && navController.currentDestination?.route != NavigationRoutes.LOGIN
             && navController.currentDestination?.route != NavigationRoutes.REGISTER) {
             // Si el usuario cierra sesión, regresar a la pantalla de login
             navController.navigate(NavigationRoutes.LOGIN) {
                 popUpTo(0) { inclusive = true }
             }
-        } else if (currentUser != null && 
-                 (navController.currentDestination?.route == NavigationRoutes.LOGIN ||
-                  navController.currentDestination?.route == NavigationRoutes.REGISTER)) {
-            // Si el usuario inicia sesión, navegar a la pantalla principal
-            navController.navigate(NavigationRoutes.MAIN) {
-                popUpTo(0) { inclusive = true }
+        } else if (currentUser != null) {
+            // Si el usuario está autenticado
+            if (navController.currentDestination?.route == NavigationRoutes.LOGIN ||
+                navController.currentDestination?.route == NavigationRoutes.REGISTER) {
+                // Si está en login/register, ir a main
+                navController.navigate(NavigationRoutes.MAIN) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+            
+            // Manejar la navegación desde notificaciones
+            onNavigateFromNotification?.let { studyPlanId ->
+                // Primero navegar a MAIN si no estamos ahí
+                if (navController.currentDestination?.route != NavigationRoutes.MAIN) {
+                    navController.navigate(NavigationRoutes.MAIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+                // Luego navegar al detalle del plan
+                navController.navigate(NavigationRoutes.studyPlanDetail(studyPlanId))
             }
         }
     }

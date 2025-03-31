@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
@@ -36,6 +35,9 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material3.Card
@@ -54,6 +56,9 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -86,6 +91,20 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,16 +120,17 @@ fun HomeScreen(
     val isLoading by studyPlanViewModel.isLoading.collectAsState()
     val error by studyPlanViewModel.error.collectAsState()
     
-    // Estados para pestañas y fecha seleccionada
+    // Estados para pestañas y modo de visualización
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    var selectedDateIndex by remember { mutableIntStateOf(0) }
     
-    // Obtener las fechas para el selector
-    val dates = List(5) { index ->
-        val calendar = Calendar.getInstance()
-        calendar.add(Calendar.DAY_OF_YEAR, index)
-        calendar.time
-    }
+    // Estado para el diálogo de calendario
+    var showCalendarDialog by remember { mutableStateOf(false) }
+    
+    // Fecha seleccionada actual
+    var selectedDate by remember { mutableStateOf(Calendar.getInstance().time) }
+    
+    // Estado para mostrar todos los itinerarios o sólo los del día
+    var showAllPlans by remember { mutableStateOf(false) }
     
     // Cargar los planes de estudio cuando se muestra la pantalla
     LaunchedEffect(currentUser) {
@@ -134,7 +154,20 @@ fun HomeScreen(
     
     // Calcular el progreso total de los planes de estudio
     val totalProgress = if (studyPlans.isNotEmpty()) {
-        studyPlans.sumOf { it.completionRate }.toFloat() / studyPlans.size
+        // Si showAllPlans es true, calcular progreso de todos los planes
+        // Si es false, calcular solo los planes del día actual
+        val plansToCalculate = if (showAllPlans) {
+            studyPlans
+        } else {
+            studyPlans.filter { plan ->
+                val planDate = plan.startDateTime.toDate()
+                isSameDay(planDate, selectedDate)
+            }
+        }
+        
+        if (plansToCalculate.isEmpty()) 0f else {
+            plansToCalculate.sumOf { it.completionRate }.toFloat() / plansToCalculate.size
+        }
     } else {
         0f
     }
@@ -146,19 +179,21 @@ fun HomeScreen(
         label = "progressAnimation"
     )
     
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { /* Navegar a crear nuevo plan */ },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Agregar plan de estudio"
-                )
+    // Mostrar el diálogo de calendario si está activo
+    if (showCalendarDialog) {
+        CalendarPickerDialog(
+            onDismissRequest = { showCalendarDialog = false },
+            onDateSelected = { date ->
+                selectedDate = date
+                showCalendarDialog = false
+                // Al seleccionar una fecha específica, mostramos solo los planes de ese día
+                showAllPlans = false
             }
-        }
+        )
+    }
+    
+    Scaffold(
+        // Eliminar el FloatingActionButton
     ) { paddingValues ->
         Surface(
             modifier = Modifier
@@ -171,7 +206,25 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(top = 16.dp)
             ) {
-                // Barra superior con avatar y notificaciones
+                // Ya no necesitamos esta barra superior
+                // Comenzamos directamente con el contenido principal
+                
+                // Tarjeta de progreso
+                ProgressCard(
+                    progress = animatedProgress,
+                    totalPlans = if (showAllPlans) studyPlans.size else studyPlans.filter { plan ->
+                        val planDate = plan.startDateTime.toDate()
+                        isSameDay(planDate, selectedDate)
+                    }.size,
+                    completedPlans = if (showAllPlans) studyPlans.count { it.completionRate >= 100 } else studyPlans.filter { plan ->
+                        val planDate = plan.startDateTime.toDate()
+                        isSameDay(planDate, selectedDate)
+                    }.count { it.completionRate >= 100 }
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Encabezado con fecha y botones
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -179,47 +232,102 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Sección del usuario
-                    currentUser?.let { user ->
-                        UserProfileSection(user)
+                    // Botón para hoy
+                    Button(
+                        onClick = {
+                            selectedDate = Calendar.getInstance().time
+                            showAllPlans = false
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (!showAllPlans && isSameDay(selectedDate, Calendar.getInstance().time))
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.surface,
+                            contentColor = if (!showAllPlans && isSameDay(selectedDate, Calendar.getInstance().time))
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    ) {
+                        Text(
+                            text = "Hoy",
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                     
-                    // Icono de notificaciones
-                    Box(
+                    // Botón para mostrar todos los itinerarios
+                    Button(
+                        onClick = {
+                            showAllPlans = true
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (showAllPlans)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.surface,
+                            contentColor = if (showAllPlans)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurface
+                        ),
                         modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center
+                            .padding(4.dp)
+                            .clip(RoundedCornerShape(8.dp))
                     ) {
-                        IconButton(onClick = { /* Abrir notificaciones */ }) {
-                            Icon(
-                                imageVector = Icons.Rounded.Notifications,
-                                contentDescription = "Notificaciones",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = "Todos",
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    
+                    // Botón para abrir el calendario
+                    Button(
+                        onClick = { showCalendarDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = "Abrir calendario",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 
-                // Tarjeta de progreso
-                ProgressCard(
-                    progress = animatedProgress,
-                    progressText = "${totalProgress.toInt()}%",
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Selector de fechas
-                DateHeader(selectedDate = dates[selectedDateIndex])
-                Spacer(modifier = Modifier.height(8.dp))
-                DateSelector(
-                    selectedIndex = selectedDateIndex,
-                    onDateSelected = { index -> selectedDateIndex = index }
-                )
+                // Mostrar la fecha seleccionada sólo si no estamos mostrando todos los planes
+                if (!showAllPlans) {
+                    // Fecha mostrada en formato legible
+                    Text(
+                        text = "Planes para: ${SimpleDateFormat("EEEE, d MMMM yyyy", Locale("es", "ES")).format(selectedDate).capitalize(Locale("es", "ES"))}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp, horizontal = 16.dp)
+                    )
+                } else {
+                    Text(
+                        text = "Mostrando todos los planes",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp, horizontal = 16.dp)
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
@@ -316,24 +424,27 @@ fun HomeScreen(
                             else -> studyPlans
                         }
                         
-                        // Filtrar por fecha seleccionada
-                        val selectedDate = dates[selectedDateIndex]
-                        val dateFilteredPlans = filteredPlans.filter { plan ->
-                            val planDate = plan.startDateTime.toDate()
-                            isSameDay(planDate, selectedDate)
+                        // Filtrar por fecha seleccionada (solo si no estamos mostrando todos los planes)
+                        val dateFilteredPlans = if (!showAllPlans) {
+                            filteredPlans.filter { plan ->
+                                val planDate = plan.startDateTime.toDate()
+                                isSameDay(planDate, selectedDate)
+                            }
+                        } else {
+                            filteredPlans
                         }
                         
                         if (dateFilteredPlans.isEmpty() && hasLoadedButEmpty) {
                             item {
                                 EmptyStateMessage(
-                                    message = "No hay planes para este día.\nCrea un nuevo plan con el botón +",
+                                    message = "No hay planes para mostrar.",
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         } else if (dateFilteredPlans.isEmpty()) {
                             item {
                                 EmptyStateMessage(
-                                    message = "No hay planes para este día",
+                                    message = if (showAllPlans) "No hay planes para mostrar" else "No hay planes para este día",
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
@@ -449,8 +560,8 @@ fun UserProfileSection(user: User) {
 @Composable
 fun ProgressCard(
     progress: Float,
-    progressText: String,
-    modifier: Modifier = Modifier
+    totalPlans: Int,
+    completedPlans: Int
 ) {
     // Animación de entrada para la tarjeta
     val cardAnimatedScale by animateFloatAsState(
@@ -476,7 +587,7 @@ fun ProgressCard(
     )
     
     Box(
-        modifier = modifier
+        modifier = Modifier
             .scale(cardAnimatedScale)
             .clip(RoundedCornerShape(24.dp))
             .background(
@@ -506,8 +617,16 @@ fun ProgressCard(
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
+                    // Texto principal que muestra el progreso de los planes
                     Text(
-                        text = "¡Tu tarea de hoy casi completada!",
+                        text = if (totalPlans > 0) {
+                            if (completedPlans == totalPlans)
+                                "¡Todos tus planes de estudio completados!"
+                            else
+                                "Progreso de tus planes de estudio"
+                        } else {
+                            "No hay planes de estudio para mostrar"
+                        },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -515,35 +634,16 @@ fun ProgressCard(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
+                    // Información sobre los planes completados
                     Text(
-                        text = "Continúa donde lo dejaste",
+                        text = if (totalPlans > 0) {
+                            "$completedPlans de $totalPlans planes completados"
+                        } else {
+                            "No hay planes de estudio para mostrar"
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Botón de "Ver tarea" con sombra y efecto hover
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        elevation = CardDefaults.cardElevation(
-                            defaultElevation = 2.dp
-                        ),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { /* Acción del botón */ }
-                    ) {
-                        Text(
-                            text = "Ver tarea",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
                 }
                 
                 // Indicador de progreso circular con texto y animación
@@ -843,112 +943,6 @@ fun DateHeader(selectedDate: Date) {
 }
 
 @Composable
-fun DateSelector(
-    selectedIndex: Int,
-    onDateSelected: (Int) -> Unit
-) {
-    // Obtener los próximos 5 días
-    val dates = List(5) { index ->
-        val newCalendar = Calendar.getInstance()
-        newCalendar.add(Calendar.DAY_OF_YEAR, index)
-        Triple(
-            newCalendar.get(Calendar.DAY_OF_MONTH),
-            SimpleDateFormat("EEE", Locale("es", "ES")).format(newCalendar.time),
-            index == selectedIndex // Usar el parámetro para determinar cuál está seleccionado
-        )
-    }
-    
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp)
-    ) {
-        itemsIndexed(dates) { index, (day, dayName, _) ->
-            // Calcular si este ítem está seleccionado basado en el índice
-            val isSelected = index == selectedIndex
-            
-            // Animación al renderizar cada fecha
-            AnimatedVisibility(
-                visible = true,
-                enter = fadeIn(initialAlpha = 0.4f) + 
-                    slideInVertically(
-                        initialOffsetY = { it * (1 + index / 5) }, 
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        )
-                    )
-            ) {
-                DateChip(
-                    day = day.toString(), 
-                    dayName = dayName, 
-                    isSelected = isSelected,
-                    onDateSelected = { onDateSelected(index) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun DateChip(
-    day: String,
-    dayName: String,
-    isSelected: Boolean,
-    onDateSelected: () -> Unit
-) {
-    // Animación del escalado al seleccionar una fecha
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.05f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "scaleAnimation"
-    )
-    
-    // Usamos directamente los colores sin animación
-    val backgroundColor = if (isSelected) 
-        MaterialTheme.colorScheme.primary 
-    else 
-        MaterialTheme.colorScheme.surfaceVariant
-    
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 4.dp else 0.dp
-        ),
-        modifier = Modifier
-            .size(width = 60.dp, height = 80.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { onDateSelected() }
-            .scale(scale)
-            .padding(4.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = dayName.uppercase(),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = day,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
 fun FirestoreErrorMessage(
     error: String,
     onRetry: () -> Unit,
@@ -1014,4 +1008,230 @@ private fun isSameDay(date1: Date, date2: Date): Boolean {
     return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
            cal1.get(Calendar.MONTH) == cal2.get(Calendar.MONTH) &&
            cal1.get(Calendar.DAY_OF_MONTH) == cal2.get(Calendar.DAY_OF_MONTH)
+}
+
+// Actualizar el componente DateNavigator para mostrar la fecha en el centro
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CalendarPickerDialog(
+    onDismissRequest: () -> Unit,
+    onDateSelected: (Date) -> Unit
+) {
+    val datePickerState = rememberDatePickerState()
+    
+    DatePickerDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            Button(
+                onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        // Corregir el problema de zona horaria
+                        val calendar = Calendar.getInstance()
+                        calendar.timeInMillis = millis
+                        // Establecer la hora a mediodía para evitar problemas de zona horaria
+                        calendar.set(Calendar.HOUR_OF_DAY, 12)
+                        calendar.set(Calendar.MINUTE, 0)
+                        calendar.set(Calendar.SECOND, 0)
+                        calendar.set(Calendar.MILLISECOND, 0)
+                        onDateSelected(calendar.time)
+                    }
+                    onDismissRequest()
+                }
+            ) {
+                Text("Confirmar")
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = onDismissRequest
+            ) {
+                Text("Cancelar")
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
+    }
+}
+
+// String.capitalize extension para transformar la primera letra a mayúscula
+fun String.capitalize(locale: Locale): String {
+    return this.replaceFirstChar { 
+        if (it.isLowerCase()) it.titlecase(locale) else it.toString() 
+    }
+}
+
+@Composable
+fun StudyPlanItem(
+    studyPlan: StudyPlan,
+    formattedTime: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Animación de entrada para cada elemento
+    val alpha by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(600),
+        label = "alphaAnimation"
+    )
+    
+    // Determinar el color basado en la materia o subject
+    val subjectColors = mapOf(
+        "Matemáticas" to Color(0xFF3F51B5),
+        "Ciencias" to Color(0xFF4CAF50),
+        "Literatura" to Color(0xFFE91E63),
+        "Historia" to Color(0xFFFF9800),
+        "Idiomas" to Color(0xFF9C27B0),
+        "Tecnología" to Color(0xFF00BCD4),
+        "Artes" to Color(0xFFFFEB3B),
+        "Deportes" to Color(0xFF8BC34A),
+        "Economía" to Color(0xFFF44336),
+        "Filosofía" to Color(0xFF795548)
+    )
+    
+    // Color por defecto si no hay coincidencia
+    val themeColor = subjectColors[studyPlan.subject] ?: MaterialTheme.colorScheme.primary
+    
+    // Estado del plan
+    val statusIcon = when {
+        studyPlan.isCompleted -> Icons.Default.CheckCircle to Color(0xFF4CAF50)
+        studyPlan.completionRate > 0 -> Icons.Default.Schedule to Color(0xFFFF9800)
+        else -> Icons.Default.Schedule to Color(0xFF757575)
+    }
+    
+    // Interacción para efecto hover
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val cardElevation by animateFloatAsState(
+        targetValue = if (isHovered) 6f else 2f,
+        animationSpec = spring(dampingRatio = 0.6f),
+        label = "elevationAnimation"
+    )
+    
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .alpha(alpha)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,  // Sin efecto de ripple, lo manejaremos con la elevación
+                onClick = onClick
+            )
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = cardElevation.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Barra de color decorativa
+            Box(
+                modifier = Modifier
+                    .width(6.dp)
+                    .height(80.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(themeColor)
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // Categoría
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = studyPlan.subject,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = themeColor
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(themeColor.copy(alpha = 0.5f))
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = formattedTime,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(6.dp))
+                
+                // Título del plan
+                Text(
+                    text = studyPlan.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Barra de progreso con animación
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    LinearProgressIndicator(
+                        progress = studyPlan.completionRate / 100f,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        color = themeColor,
+                        strokeCap = StrokeCap.Round
+                    )
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Text(
+                        text = "${studyPlan.completionRate}%",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Indicador de estado
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(statusIcon.second.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = statusIcon.first,
+                    contentDescription = null,
+                    tint = statusIcon.second,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    }
 }

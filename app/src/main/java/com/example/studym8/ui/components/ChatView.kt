@@ -85,122 +85,128 @@ fun ChatView(
         }
     }
     
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .imePadding() // Maneja correctamente el teclado sin afectar la posición de la cabecera
     ) {
-        // Cabecera del chat - siempre visible sin importar el teclado
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            tonalElevation = 3.dp,
-            shadowElevation = 4.dp
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Column {
-                Box(
+            // Mensajes - Este contenedor absorberá el espacio disponible
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                LazyColumn(
+                    state = listState,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp, horizontal = 16.dp)
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp)
+                        .background(MaterialTheme.colorScheme.background)
                 ) {
-                    Text(
-                        text = studyPlan?.title ?: "Asistente de Estudio",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                Divider()
-            }
-        }
-        
-        // Mensajes
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp)
-        ) {
-            // Si no hay mensajes, mostrar un mensaje de bienvenida
-            if (messages.isEmpty()) {
-                item {
-                    WelcomeMessage(studyPlan)
-                }
-            }
-            
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            
-            items(messages) { message ->
-                MessageItem(message = message)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            
-            // Indicador de carga cuando la IA está respondiendo
-            item {
-                AnimatedVisibility(
-                    visible = isLoading,
-                    enter = fadeIn() + slideInVertically(
-                        initialOffsetY = { it },
-                        animationSpec = tween(durationMillis = 300)
-                    )
-                ) {
-                    LoadingIndicator()
+                    // Si no hay mensajes, mostrar un mensaje de bienvenida
+                    if (messages.isEmpty()) {
+                        item {
+                            WelcomeMessage(studyPlan, onSendMessage)
+                        }
+                    }
+                    
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
+                    items(messages) { message ->
+                        MessageItem(message = message)
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
+                    // Indicador de carga cuando la IA está respondiendo
+                    if (isLoading) {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                Box(
+                                    modifier = Modifier.align(Alignment.Center)
+                                ) {
+                                    LoadingIndicator()
+                                }
+                            }
+                        }
+                    }
+                    
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
                 }
             }
             
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
-        
-        // Barra de entrada de mensajes
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            tonalElevation = 2.dp,
-            shadowElevation = 4.dp
-        ) {
-            Row(
+            // Barra de entrada de mensajes - Con imePadding para ajustarse al teclado
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .navigationBarsPadding(), // Respeta la barra de navegación
-                verticalAlignment = Alignment.CenterVertically
+                    .imePadding()
+                    .navigationBarsPadding(),
+                tonalElevation = 2.dp,
+                shadowElevation = 4.dp,
+                color = MaterialTheme.colorScheme.surfaceVariant
             ) {
-                TextField(
-                    value = messageText,
-                    onValueChange = { messageText = it },
-                    placeholder = { Text("Escribe tu pregunta...") },
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        disabledContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    ),
-                    shape = RoundedCornerShape(24.dp)
-                )
-                
-                IconButton(
-                    onClick = {
-                        if (messageText.isNotBlank()) {
-                            onSendMessage(messageText)
-                            messageText = ""
-                        }
-                    },
-                    modifier = Modifier
-                        .background(MaterialTheme.colorScheme.primary, CircleShape)
-                        .size(48.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 12.dp)
+                        .navigationBarsPadding(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Send,
-                        contentDescription = "Enviar",
-                        tint = MaterialTheme.colorScheme.onPrimary
+                    TextField(
+                        value = messageText,
+                        onValueChange = { messageText = it },
+                        placeholder = { 
+                            Text(
+                                "Escribe tu pregunta...",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            ) 
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp)
+                            .clip(RoundedCornerShape(24.dp)),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            disabledContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        shape = RoundedCornerShape(24.dp),
+                        maxLines = 3
                     )
+                    
+                    IconButton(
+                        onClick = {
+                            if (messageText.isNotBlank()) {
+                                onSendMessage(messageText)
+                                messageText = ""
+                            }
+                        },
+                        modifier = Modifier
+                            .background(
+                                color = if (messageText.isBlank()) 
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) 
+                                else 
+                                    MaterialTheme.colorScheme.primary,
+                                shape = CircleShape
+                            )
+                            .size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "Enviar",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
         }
@@ -208,7 +214,7 @@ fun ChatView(
 }
 
 @Composable
-fun WelcomeMessage(studyPlan: StudyPlan?) {
+fun WelcomeMessage(studyPlan: StudyPlan?, onSendMessage: (String) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -216,20 +222,78 @@ fun WelcomeMessage(studyPlan: StudyPlan?) {
         contentAlignment = Alignment.Center
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
+                .padding(24.dp)
         ) {
+            // Emoji con animación sutil
             Text(
-                text = "👋 ¡Bienvenido al chat${studyPlan?.let { " de ${it.title}" } ?: ""}!",
+                text = "👋",
+                style = MaterialTheme.typography.headlineLarge,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            Text(
+                text = "¡Bienvenido al chat${studyPlan?.let { " de ${it.title}" } ?: ""}!",
                 style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+            
             Text(
                 text = "Hazme cualquier pregunta sobre ${studyPlan?.subject ?: "tu plan de estudios"}. Estoy aquí para ayudarte.",
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 32.dp)
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Sugerencias de preguntas
+            Text(
+                text = "Algunas ideas para empezar:",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            SuggestionChip(text = "¿Cómo puedo organizar mi tiempo?", onClick = { onSendMessage("¿Cómo puedo organizar mi tiempo para estudiar de manera efectiva?") })
+            SuggestionChip(text = "¿Qué técnicas de estudio recomiendas?", onClick = { onSendMessage("¿Qué técnicas de estudio recomiendas para este tema?") })
+            SuggestionChip(text = "¿Cuáles son los temas más importantes?", onClick = { onSendMessage("¿Cuáles son los temas más importantes que debo dominar?") })
+        }
+    }
+}
+
+@Composable
+private fun SuggestionChip(text: String, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .padding(vertical = 4.dp)
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        onClick = onClick
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp, horizontal = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -247,7 +311,7 @@ fun LoadingIndicator() {
             modifier = Modifier
                 .clip(RoundedCornerShape(18.dp))
                 .background(MaterialTheme.colorScheme.secondaryContainer)
-                .padding(12.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -265,7 +329,10 @@ fun LoadingIndicator() {
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = "Pensando...",
-                color = MaterialTheme.colorScheme.onSecondaryContainer
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Medium
+                )
             )
         }
     }
@@ -313,7 +380,11 @@ fun MessageItem(message: ChatMessage) {
                     } else {
                         MaterialTheme.colorScheme.secondaryContainer
                     }
-                )
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 2.dp
+                ),
+                modifier = Modifier.padding(vertical = 2.dp)
             ) {
                 if (isFromUser) {
                     // Mensajes del usuario
@@ -359,16 +430,17 @@ fun AvatarIcon(
 ) {
     Box(
         modifier = Modifier
-            .size(36.dp)
+            .size(40.dp)
             .clip(CircleShape)
-            .background(backgroundColor),
+            .background(backgroundColor)
+            .padding(1.dp),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = contentColor,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(24.dp)
         )
     }
 }

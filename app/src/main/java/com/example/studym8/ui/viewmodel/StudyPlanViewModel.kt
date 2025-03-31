@@ -1,7 +1,10 @@
 package com.example.studym8.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.studym8.data.NotificationManager
+import com.example.studym8.data.NotificationType
 import com.example.studym8.data.model.ResponseSection
 import com.example.studym8.data.model.ResponseSectionType
 import com.example.studym8.data.model.StudyPlan
@@ -21,6 +24,7 @@ import java.util.UUID
 class StudyPlanViewModel : ViewModel() {
     
     private val repository = StudyPlanRepository()
+    private var notificationManager: NotificationManager? = null
     
     // StateFlow para la lista de planes de estudio
     private val _studyPlans = MutableStateFlow<List<StudyPlan>>(emptyList())
@@ -50,29 +54,61 @@ class StudyPlanViewModel : ViewModel() {
         loadStudyPlans()
     }
     
+    fun initializeNotificationManager(context: Context) {
+        notificationManager = NotificationManager(context)
+    }
+    
+    private fun checkStudyPlanStatus(studyPlan: StudyPlan) {
+        val currentDate = Date()
+        val calendar = Calendar.getInstance()
+        calendar.time = currentDate
+        
+        // Verificar si el plan está vencido
+        if (studyPlan.endDateTime.toDate().before(currentDate) && !studyPlan.isCompleted) {
+            notificationManager?.showStudyPlanNotification(studyPlan, NotificationType.OVERDUE)
+        }
+        
+        // Verificar si el plan está próximo a vencer (3 días antes)
+        calendar.add(Calendar.DAY_OF_MONTH, 3)
+        if (studyPlan.endDateTime.toDate().before(calendar.time) && 
+            studyPlan.endDateTime.toDate().after(currentDate) && 
+            !studyPlan.isCompleted) {
+            notificationManager?.showStudyPlanNotification(studyPlan, NotificationType.UPCOMING)
+        }
+        
+        // Verificar si hay actividades pendientes
+        if (!studyPlan.isCompleted && studyPlan.completionRate < 100) {
+            notificationManager?.showStudyPlanNotification(studyPlan, NotificationType.INCOMPLETE)
+        }
+    }
+    
     fun loadStudyPlans() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             
             try {
-                println("StudyPlanViewModel: Iniciando carga de planes de estudio")
                 val plans = repository.getStudyPlans()
-                println("StudyPlanViewModel: Planes obtenidos: ${plans.size}")
-                
-                if (plans.isNotEmpty()) {
-                    println("StudyPlanViewModel: Primer plan - Título: ${plans[0].title}, ID: ${plans[0].id}")
-                }
-                
                 _studyPlans.value = plans
+                
+                // Verificar estados pero con un retraso entre verificaciones
+                checkStudyPlansStatusWithDelay(plans)
             } catch (e: Exception) {
-                println("StudyPlanViewModel: Error al cargar planes: ${e.message}")
-                e.printStackTrace()
                 _error.value = "Error al cargar los planes de estudio: ${e.message}"
-                _studyPlans.value = emptyList()
             } finally {
                 _isLoading.value = false
-                println("StudyPlanViewModel: Carga finalizada, planes: ${_studyPlans.value.size}")
+            }
+        }
+    }
+    
+    private fun checkStudyPlansStatusWithDelay(plans: List<StudyPlan>) {
+        viewModelScope.launch {
+            plans.forEachIndexed { index, plan ->
+                // Agregar un retraso de 1 segundo entre cada verificación
+                if (index > 0) {
+                    kotlinx.coroutines.delay(1000)
+                }
+                checkStudyPlanStatus(plan)
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.example.studym8.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.studym8.data.repository.StudyPlanRepository
 import com.example.studym8.data.repository.UserRepository
@@ -15,7 +16,9 @@ import com.google.firebase.ktx.Firebase
  * para la aplicación y configura la navegación
  */
 @Composable
-fun MainAppContent() {
+fun MainAppContent(
+    onNavigateFromNotification: String? = null
+) {
     // Inicializar Firebase
     val firebaseAuth = Firebase.auth
     val firestore = Firebase.firestore
@@ -34,6 +37,7 @@ fun MainAppContent() {
     // Configurar la navegación de la aplicación
     AppNavigation(
         authViewModel = authViewModel,
-        studyPlanViewModel = studyPlanViewModel
+        studyPlanViewModel = studyPlanViewModel,
+        onNavigateFromNotification = onNavigateFromNotification
     )
 } 

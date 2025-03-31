@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -188,13 +190,6 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Cuadro de email
-        Text(
-            "Email*",
-            fontSize = 16.sp,
-            modifier = Modifier.align(Alignment.Start),
-            color = MaterialTheme.colorScheme.onBackground
-        )
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
@@ -219,13 +214,6 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Cuadro de contraseña
-        Text(
-            "Contraseña*",
-            fontSize = 16.sp,
-            modifier = Modifier.align(Alignment.Start),
-            color = MaterialTheme.colorScheme.onBackground
-        )
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
@@ -349,20 +337,28 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         // "Primera vez? Regístrate"
-        ClickableText(
-            text = AnnotatedString("¿Primera vez? Regístrate"),
-            onClick = {
-                if (!isLoading) {
-                    navigateToRegister()
-                }
-            },
-            modifier = Modifier.padding(8.dp),
-            style = TextStyle(
+        // "¿Ya tienes una cuenta? Inicia sesión aquí"
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "¿No tienes cuenta? ",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                "Registrate aquí",
                 fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.primary,
-                textDecoration = TextDecoration.Underline
+                fontWeight = FontWeight.Bold,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.clickable(enabled = !isLoading) {
+                    navigateToRegister()
+                }
             )
-        )
+        }
     }
 }
 

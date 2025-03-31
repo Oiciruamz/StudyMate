@@ -22,10 +22,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -81,6 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.studym8.data.model.StudyPlan
@@ -95,6 +98,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import androidx.compose.ui.geometry.Offset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -152,83 +156,204 @@ fun ItineraryScreen(
         ),
         label = "scaleAnimation"
     )
-    Scaffold(
-        topBar = {
-            StudyMateTopBar(
-                user = currentUser,
-                title = "Planificador de Estudio",
-                onLogoutClick = onLogout
-            )
-        }
-    ) { paddingValues ->
+    
+    // Animaciones adicionales para elementos de la interfaz
+    val contentScale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "contentScaleAnimation"
+    )
+    
+    // Colores y gradientes
+    val primaryGradient = Brush.linearGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.tertiary
+        ),
+        start = Offset(0f, 0f),
+        end = Offset(1000f, 1000f)
+    )
+    
+    val backgroundGradient = Brush.verticalGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.background,
+            MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
+        )
+    )
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundGradient)
+    ) {
+        // Elementos decorativos de fondo
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+                .fillMaxWidth()
+                .height(200.dp)
                 .background(
-                    brush = Brush.verticalGradient(
+                    Brush.verticalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.surface,
-                            MaterialTheme.colorScheme.surfaceVariant
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            Color.Transparent
                         )
                     )
                 )
+        )
+        
+        // Círculos decorativos
+        Box(
+            modifier = Modifier
+                .size(150.dp)
+                .offset((-50).dp, (-50).dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+        )
+        
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .align(Alignment.TopEnd)
+                .offset((20).dp, (40).dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
+        )
+        
+        // Contenido principal
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+                .scale(contentScale),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
+            // Encabezado
+            Text(
+                text = "Crear Plan de Estudio",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+            
+            // Descripción para el usuario
+            Text(
+                text = "Completa la información para generar un plan personalizado",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+            
+            // Formulario de creación de plan de estudio
+            Card(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxWidth()
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = RoundedCornerShape(24.dp),
+                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                    ),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                shape = RoundedCornerShape(24.dp)
             ) {
-                // Título de la pantalla
-                Text(
-                    text = "Planificador de Estudio",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                
-                // Formulario de creación de plan de estudio
-                Card(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(16.dp),
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                        ),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(16.dp)
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Column(
+                    // Icono y título de la sección
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Detalles del Plan",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    
+                    // Línea decorativa
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        // Campo de asignatura
-                        OutlinedTextField(
-                            value = subject,
-                            onValueChange = { subject = it },
-                            label = { Text("Asignatura o tema") },
-                            modifier = Modifier.fillMaxWidth(),
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Words
+                            .height(1.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                    )
+                                )
                             )
+                    )
+                    
+                    // Campo de asignatura con mejor diseño
+                    OutlinedTextField(
+                        value = subject,
+                        onValueChange = { subject = it },
+                        label = { Text("Asignatura o tema") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surface),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Words
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    // Sección de fechas con título
+                    Column {
+                        Text(
+                            text = "Periodo de estudio",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
                         
                         // Selector de fecha y hora de inicio
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             OutlinedButton(
                                 onClick = { showStartDatePicker = true },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                ),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                )
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.DateRange,
@@ -248,7 +373,14 @@ fun ItineraryScreen(
                             OutlinedButton(
                                 onClick = { showStartTimePicker = true },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                ),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                )
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Timer,
@@ -266,15 +398,24 @@ fun ItineraryScreen(
                             }
                         }
                         
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
                         // Selector de fecha y hora de fin
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             OutlinedButton(
                                 onClick = { showEndDatePicker = true },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                ),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                )
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.DateRange,
@@ -294,7 +435,14 @@ fun ItineraryScreen(
                             OutlinedButton(
                                 onClick = { showEndTimePicker = true },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                ),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                )
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Timer,
@@ -311,382 +459,466 @@ fun ItineraryScreen(
                                 )
                             }
                         }
-                        
-                        // Botones de acción
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            // Botón para generar con IA
-                            Button(
-                                onClick = {
-                                    if (subject.isNotBlank() && currentUser != null) {
-                                        if (startDate != null && endDate != null) {
-                                            studyPlanViewModel.generateAIStudyPlan(subject, startDate!!, endDate!!)
-                                        } else {
-                                            // Usar fechas predeterminadas
-                                            val now = Calendar.getInstance()
-                                            val start = now.time
-                                            now.add(Calendar.HOUR, 2)
-                                            val end = now.time
-                                            studyPlanViewModel.generateAIStudyPlan(subject, start, end)
-                                        }
-                                        showAiResponse = true
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp)
-                                    .scale(if (!isLoading) scale else 1f)
-                                    .shadow(
-                                        elevation = 6.dp,
-                                        shape = RoundedCornerShape(50),
-                                        spotColor = MaterialTheme.colorScheme.primary
-                                    ),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiary,
-                                    contentColor = MaterialTheme.colorScheme.onTertiary
-                                )
-                            ) {
-                                if (isLoading) {
-                                    CircularProgressIndicator(
-                                        color = MaterialTheme.colorScheme.onTertiary,
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .rotate(rotation)
-                                    )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Botón para generar con IA mejorado
+                    Button(
+                        onClick = {
+                            if (subject.isNotBlank() && currentUser != null) {
+                                if (startDate != null && endDate != null) {
+                                    studyPlanViewModel.generateAIStudyPlan(subject, startDate!!, endDate!!)
                                 } else {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.AutoAwesome,
-                                            contentDescription = "Generar con IA",
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Generar Plan de Estudio con IA")
-                                    }
+                                    // Usar fechas predeterminadas
+                                    val now = Calendar.getInstance()
+                                    val start = now.time
+                                    now.add(Calendar.HOUR, 2)
+                                    val end = now.time
+                                    studyPlanViewModel.generateAIStudyPlan(subject, start, end)
                                 }
+                                showAiResponse = true
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 8.dp)
+                            .height(54.dp)
+                            .scale(if (!isLoading) scale else 1f)
+                            .shadow(
+                                elevation = 6.dp,
+                                shape = RoundedCornerShape(50),
+                                spotColor = MaterialTheme.colorScheme.primary
+                            ),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary,
+                            contentColor = MaterialTheme.colorScheme.onTertiary
+                        ),
+                        shape = RoundedCornerShape(50)
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.onTertiary,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .rotate(rotation)
+                            )
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = "Generar con IA",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    "Generar Plan de Estudio con IA",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
                             }
                         }
                     }
                 }
+            }
+            
+            // Información sobre el uso de IA
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp)
+                    .clip(RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = "Sugerencias Inteligentes",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            text = "Nuestra IA analizará el tema y creará un plan de estudio personalizado adaptado a tus necesidades.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                        )
+                    }
+                }
+            }
+            
+            // Mostrar respuesta de IA si está disponible
+            if (showAiResponse && aiResponse != null) {
+                Spacer(modifier = Modifier.height(24.dp))
                 
-                // Mostrar respuesta de IA si está disponible
-                if (showAiResponse && aiResponse != null) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Card(
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .shadow(
+                            elevation = 12.dp,
+                            shape = RoundedCornerShape(24.dp),
+                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        ),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp)
-                            .shadow(
-                                elevation = 8.dp,
-                                shape = RoundedCornerShape(16.dp),
-                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                            ),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f)
-                        ),
-                        shape = RoundedCornerShape(16.dp)
+                            .padding(20.dp)
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Icon(
                                         imageVector = Icons.Default.AutoAwesome,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "Sugerencia generada por IA",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
-                                
-                                IconButton(onClick = { showAiResponse = false }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Cerrar",
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Plan de Estudio Generado",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             }
                             
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            // Mostrar contenido de IA con la vista mejorada
-                            AiResponseView(
-                                showResponse = aiResponse != null,
-                                aiResponse = aiResponse,
-                                onCloseClick = {},
-                                formatAiResponse = studyPlanViewModel::formatAIResponse,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            // Botón para guardar el plan generado por IA
-                            Button(
-                                onClick = {
-                                    if (currentUser != null && aiResponse != null) {
-                                        // Usar las fechas seleccionadas o predeterminadas
-                                        val startTime = startDate ?: Calendar.getInstance().time
-                                        val calendar = Calendar.getInstance()
-                                        calendar.time = startTime
-                                        calendar.add(Calendar.HOUR, 2)
-                                        val endTime = endDate ?: calendar.time
-                                        
-                                        // Crear el plan de estudio con IA
-                                        studyPlanViewModel.createAIStudyPlan(
-                                            subject = subject,
-                                            startDateTime = startTime,
-                                            endDateTime = endTime,
-                                            aiResponse = aiResponse ?: "",
-                                            onSuccess = { planId -> 
-                                                onNavigateToStudyPlanDetail(planId)
-                                            }, 
-                                            onError = { /* Manejar error */ }
-                                        )
-                                        
-                                        // Limpiar formulario y ocultar respuesta
-                                        subject = ""
-                                        startDate = null
-                                        endDate = null
-                                        showAiResponse = false
-                                    }
-                                },
+                            IconButton(
+                                onClick = { showAiResponse = false },
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp),
-                                enabled = currentUser != null && aiResponse != null && !isLoading,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
-                                )
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Send,
-                                    contentDescription = null
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cerrar",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Guardar Plan")
                             }
                         }
-                    }
-                }
-                
-                // Mostrar mensaje de error si existe
-                if (error != null) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .shadow(
-                                elevation = 4.dp,
-                                shape = RoundedCornerShape(12.dp),
-                                spotColor = MaterialTheme.colorScheme.error
-                            ),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Línea decorativa
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .height(1.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                        )
+                                    )
+                                )
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Mostrar contenido de IA con la vista mejorada
+                        AiResponseView(
+                            showResponse = aiResponse != null,
+                            aiResponse = aiResponse,
+                            onCloseClick = {},
+                            formatAiResponse = studyPlanViewModel::formatAIResponse,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        // Botón para guardar el plan generado por IA
+                        Button(
+                            onClick = {
+                                if (currentUser != null && aiResponse != null) {
+                                    // Usar las fechas seleccionadas o predeterminadas
+                                    val startTime = startDate ?: Calendar.getInstance().time
+                                    val calendar = Calendar.getInstance()
+                                    calendar.time = startTime
+                                    calendar.add(Calendar.HOUR, 2)
+                                    val endTime = endDate ?: calendar.time
+                                    
+                                    // Crear el plan de estudio con IA
+                                    studyPlanViewModel.createAIStudyPlan(
+                                        subject = subject,
+                                        startDateTime = startTime,
+                                        endDateTime = endTime,
+                                        aiResponse = aiResponse ?: "",
+                                        onSuccess = { planId -> 
+                                            onNavigateToStudyPlanDetail(planId)
+                                        }, 
+                                        onError = { /* Manejar error */ }
+                                    )
+                                    
+                                    // Limpiar formulario y ocultar respuesta
+                                    subject = ""
+                                    startDate = null
+                                    endDate = null
+                                    showAiResponse = false
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp)
+                                .shadow(
+                                    elevation = 6.dp,
+                                    shape = RoundedCornerShape(50),
+                                    spotColor = MaterialTheme.colorScheme.primary
+                                ),
+                            enabled = currentUser != null && aiResponse != null && !isLoading,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            shape = RoundedCornerShape(50)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = "Error",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .padding(end = 8.dp)
+                                imageVector = Icons.Default.Send,
+                                contentDescription = null
                             )
-                            
+                            Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "Error: $error",
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f)
+                                "Guardar Plan",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
                             )
                         }
                     }
                 }
             }
             
-            // Indicador de carga
-            if (isLoading) {
-                Box(
+            // Mostrar mensaje de error si existe
+            if (error != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f)),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .shadow(
+                            elevation = 4.dp,
+                            shape = RoundedCornerShape(12.dp),
+                            spotColor = MaterialTheme.colorScheme.error
+                        ),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Card(
+                    Row(
                         modifier = Modifier
-                            .size(120.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .shadow(
-                                elevation = 10.dp,
-                                spotColor = MaterialTheme.colorScheme.primary,
-                                ambientColor = MaterialTheme.colorScheme.secondary
-                            ),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        )
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .rotate(rotation)
-                            )
-                            
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .rotate(-rotation * 0.7f),
-                                strokeWidth = 2.dp
-                            )
-                            
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .scale(scale)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Error",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(end = 8.dp)
+                        )
+                        
+                        Text(
+                            text = "Error: $error",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+            
+            // Espacio al final para que no se tape contenido
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+        
+        // Indicador de carga
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .shadow(
+                            elevation = 10.dp,
+                            spotColor = MaterialTheme.colorScheme.primary,
+                            ambientColor = MaterialTheme.colorScheme.secondary
+                        ),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(64.dp)
+                                .rotate(rotation)
+                        )
+                        
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .rotate(-rotation * 0.7f),
+                            strokeWidth = 2.dp
+                        )
+                        
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .scale(scale)
+                        )
                     }
                 }
             }
         }
-        
-        // Diálogos para seleccionar fecha y hora
-        if (showStartDatePicker) {
-            CalendarioPersonalizado(
-                onDismissRequest = { showStartDatePicker = false },
-                onDateSelected = { selectedDate ->
-                    // Preservar la hora del día actual si ya existe una fecha
+    }
+    
+    // Diálogos para seleccionar fecha y hora
+    if (showStartDatePicker) {
+        CalendarioPersonalizado(
+            onDismissRequest = { showStartDatePicker = false },
+            onDateSelected = { selectedDate ->
+                // Preservar la hora del día actual si ya existe una fecha
+                val calendar = Calendar.getInstance()
+                if (startDate != null) {
+                    calendar.time = startDate!!
+                } else {
+                    calendar.set(Calendar.HOUR_OF_DAY, 9)
+                    calendar.set(Calendar.MINUTE, 0)
+                }
+                
+                // Establecer la fecha seleccionada (año, mes, día)
+                calendar.set(Calendar.YEAR, selectedDate.get(Calendar.YEAR))
+                calendar.set(Calendar.MONTH, selectedDate.get(Calendar.MONTH))
+                calendar.set(Calendar.DAY_OF_MONTH, selectedDate.get(Calendar.DAY_OF_MONTH))
+                
+                startDate = calendar.time
+                showStartDatePicker = false
+            }
+        )
+    }
+    
+    if (showEndDatePicker) {
+        CalendarioPersonalizado(
+            onDismissRequest = { showEndDatePicker = false },
+            onDateSelected = { selectedDate ->
+                // Preservar la hora del día actual si ya existe una fecha
+                val calendar = Calendar.getInstance()
+                if (endDate != null) {
+                    calendar.time = endDate!!
+                } else {
+                    calendar.set(Calendar.HOUR_OF_DAY, 11)
+                    calendar.set(Calendar.MINUTE, 0)
+                }
+                
+                // Establecer la fecha seleccionada (año, mes, día)
+                calendar.set(Calendar.YEAR, selectedDate.get(Calendar.YEAR))
+                calendar.set(Calendar.MONTH, selectedDate.get(Calendar.MONTH))
+                calendar.set(Calendar.DAY_OF_MONTH, selectedDate.get(Calendar.DAY_OF_MONTH))
+                
+                endDate = calendar.time
+                showEndDatePicker = false
+            }
+        )
+    }
+    
+    if (showStartTimePicker) {
+        TimePickerDialog(
+            onDismissRequest = { showStartTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
                     val calendar = Calendar.getInstance()
                     if (startDate != null) {
                         calendar.time = startDate!!
-                    } else {
-                        calendar.set(Calendar.HOUR_OF_DAY, 9)
-                        calendar.set(Calendar.MINUTE, 0)
                     }
-                    
-                    // Establecer la fecha seleccionada (año, mes, día)
-                    calendar.set(Calendar.YEAR, selectedDate.get(Calendar.YEAR))
-                    calendar.set(Calendar.MONTH, selectedDate.get(Calendar.MONTH))
-                    calendar.set(Calendar.DAY_OF_MONTH, selectedDate.get(Calendar.DAY_OF_MONTH))
-                    
+                    calendar.set(Calendar.HOUR_OF_DAY, startTimePickerState.hour)
+                    calendar.set(Calendar.MINUTE, startTimePickerState.minute)
                     startDate = calendar.time
-                    showStartDatePicker = false
+                    showStartTimePicker = false
+                }) {
+                    Text("Confirmar")
                 }
-            )
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartTimePicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            TimePicker(state = startTimePickerState)
         }
-        
-        if (showEndDatePicker) {
-            CalendarioPersonalizado(
-                onDismissRequest = { showEndDatePicker = false },
-                onDateSelected = { selectedDate ->
-                    // Preservar la hora del día actual si ya existe una fecha
+    }
+    
+    if (showEndTimePicker) {
+        TimePickerDialog(
+            onDismissRequest = { showEndTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
                     val calendar = Calendar.getInstance()
                     if (endDate != null) {
                         calendar.time = endDate!!
-                    } else {
-                        calendar.set(Calendar.HOUR_OF_DAY, 11)
-                        calendar.set(Calendar.MINUTE, 0)
                     }
-                    
-                    // Establecer la fecha seleccionada (año, mes, día)
-                    calendar.set(Calendar.YEAR, selectedDate.get(Calendar.YEAR))
-                    calendar.set(Calendar.MONTH, selectedDate.get(Calendar.MONTH))
-                    calendar.set(Calendar.DAY_OF_MONTH, selectedDate.get(Calendar.DAY_OF_MONTH))
-                    
+                    calendar.set(Calendar.HOUR_OF_DAY, endTimePickerState.hour)
+                    calendar.set(Calendar.MINUTE, endTimePickerState.minute)
                     endDate = calendar.time
-                    showEndDatePicker = false
+                    showEndTimePicker = false
+                }) {
+                    Text("Confirmar")
                 }
-            )
-        }
-        
-        if (showStartTimePicker) {
-            TimePickerDialog(
-                onDismissRequest = { showStartTimePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        val calendar = Calendar.getInstance()
-                        if (startDate != null) {
-                            calendar.time = startDate!!
-                        }
-                        calendar.set(Calendar.HOUR_OF_DAY, startTimePickerState.hour)
-                        calendar.set(Calendar.MINUTE, startTimePickerState.minute)
-                        startDate = calendar.time
-                        showStartTimePicker = false
-                    }) {
-                        Text("Confirmar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showStartTimePicker = false }) {
-                        Text("Cancelar")
-                    }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEndTimePicker = false }) {
+                    Text("Cancelar")
                 }
-            ) {
-                TimePicker(state = startTimePickerState)
             }
-        }
-        
-        if (showEndTimePicker) {
-            TimePickerDialog(
-                onDismissRequest = { showEndTimePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        val calendar = Calendar.getInstance()
-                        if (endDate != null) {
-                            calendar.time = endDate!!
-                        }
-                        calendar.set(Calendar.HOUR_OF_DAY, endTimePickerState.hour)
-                        calendar.set(Calendar.MINUTE, endTimePickerState.minute)
-                        endDate = calendar.time
-                        showEndTimePicker = false
-                    }) {
-                        Text("Confirmar")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showEndTimePicker = false }) {
-                        Text("Cancelar")
-                    }
-                }
-            ) {
-                TimePicker(state = endTimePickerState)
-            }
+        ) {
+            TimePicker(state = endTimePickerState)
         }
     }
 }

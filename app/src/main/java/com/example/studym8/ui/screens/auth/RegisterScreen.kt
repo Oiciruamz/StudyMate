@@ -185,13 +185,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Cuadro de nombre
-        Text(
-            "Nombre*",
-            fontSize = 16.sp,
-            modifier = Modifier.align(Alignment.Start),
-            color = MaterialTheme.colorScheme.onBackground
-        )
         OutlinedTextField(
             value = nombre,
             onValueChange = { nombre = it },
@@ -216,13 +209,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Cuadro de email
-        Text(
-            "Email*",
-            fontSize = 16.sp,
-            modifier = Modifier.align(Alignment.Start),
-            color = MaterialTheme.colorScheme.onBackground
-        )
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
@@ -247,13 +233,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Cuadro de contraseña
-        Text(
-            "Contraseña*",
-            fontSize = 16.sp,
-            modifier = Modifier.align(Alignment.Start),
-            color = MaterialTheme.colorScheme.onBackground
-        )
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
