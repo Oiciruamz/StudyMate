@@ -20,10 +20,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.studym8.ui.screens.ActivityScreen
 import com.example.studym8.ui.screens.HomeScreen
 import com.example.studym8.ui.screens.ItineraryScreen
 import com.example.studym8.ui.screens.StudyPlanDetailScreen
 import com.example.studym8.ui.screens.StudyPlanChatScreen
+import com.example.studym8.ui.viewmodel.ActivityViewModel
 import com.example.studym8.ui.viewmodel.AuthViewModel
 import com.example.studym8.ui.viewmodel.StudyPlanViewModel
 import com.example.studym8.ui.screens.auth.LoginScreen
@@ -40,23 +42,30 @@ object NavigationRoutes {
     const val HOME = "home"
     const val ITINERARY = "itinerary"
     const val STATS = "stats"
-    
+
     // Rutas con parámetros
     const val STUDY_PLAN_DETAIL_BASE = "study_plan_detail"
     const val STUDY_PLAN_DETAIL = "$STUDY_PLAN_DETAIL_BASE/{planId}"
-    
+
     // Ruta para el chat del plan de estudio
     const val STUDY_PLAN_CHAT_BASE = "study_plan_chat"
     const val STUDY_PLAN_CHAT = "$STUDY_PLAN_CHAT_BASE/{planId}"
-    
+
+    // Ruta para las actividades de una sesión
+    const val ACTIVITY_SCREEN_BASE = "activity_screen"
+    const val ACTIVITY_SCREEN = "$ACTIVITY_SCREEN_BASE/{planId}/{sessionId}"
+
     // Ruta principal que contiene las pantallas con navegación inferior
     const val MAIN = "main"
-    
+
     // Función para crear la ruta de detalle de plan de estudio con un ID específico
     fun studyPlanDetail(planId: String): String = "$STUDY_PLAN_DETAIL_BASE/$planId"
-    
+
     // Función para crear la ruta de chat de plan de estudio con un ID específico
     fun studyPlanChat(planId: String): String = "$STUDY_PLAN_CHAT_BASE/$planId"
+
+    // Función para crear la ruta de actividades con IDs específicos
+    fun activityScreen(planId: String, sessionId: String): String = "$ACTIVITY_SCREEN_BASE/$planId/$sessionId"
 }
 
 /**
@@ -71,16 +80,16 @@ fun AppNavigation(
 ) {
     // Estado para controlar si estamos verificando la autenticación
     var isCheckingAuth by remember { mutableStateOf(true) }
-    
+
     // Observar el estado de autenticación
     val currentUser by authViewModel.currentUser.collectAsState(initial = null)
-    
+
     // Verificar el estado de autenticación al inicio
     LaunchedEffect(Unit) {
         authViewModel.checkCurrentUser()
         isCheckingAuth = false
     }
-    
+
     // Mostrar pantalla de carga mientras verificamos la autenticación
     if (isCheckingAuth) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -88,10 +97,10 @@ fun AppNavigation(
         }
         return
     }
-    
+
     // Determinar la ruta inicial según el estado de autenticación
     val startDestination = if (currentUser != null) NavigationRoutes.MAIN else NavigationRoutes.LOGIN
-    
+
     // Efecto para navegar según el estado de autenticación y notificaciones
     LaunchedEffect(currentUser, onNavigateFromNotification) {
         if (currentUser == null && navController.currentDestination?.route != NavigationRoutes.LOGIN
@@ -109,7 +118,7 @@ fun AppNavigation(
                     popUpTo(0) { inclusive = true }
                 }
             }
-            
+
             // Manejar la navegación desde notificaciones
             onNavigateFromNotification?.let { studyPlanId ->
                 // Primero navegar a MAIN si no estamos ahí
@@ -123,7 +132,7 @@ fun AppNavigation(
             }
         }
     }
-    
+
     NavHost(navController = navController, startDestination = startDestination) {
         // Pantalla de inicio de sesión
         composable(NavigationRoutes.LOGIN) {
@@ -137,7 +146,7 @@ fun AppNavigation(
                 }
             )
         }
-        
+
         // Pantalla de registro
         composable(NavigationRoutes.REGISTER) {
             RegisterScreen(
@@ -153,7 +162,7 @@ fun AppNavigation(
                 }
             )
         }
-        
+
         // Pantalla principal con navegación inferior
         composable(NavigationRoutes.MAIN) {
             MainScreenNavigator(
@@ -165,7 +174,7 @@ fun AppNavigation(
                 }
             )
         }
-        
+
         // Pantalla de detalle del plan de estudio
         composable(
             route = NavigationRoutes.STUDY_PLAN_DETAIL,
@@ -179,12 +188,15 @@ fun AppNavigation(
                 onBackClick = {
                     navController.popBackStack()
                 },
-                onChatClick = { planId ->
-                    navController.navigate(NavigationRoutes.studyPlanChat(planId))
+                onChatClick = { id ->
+                    navController.navigate(NavigationRoutes.studyPlanChat(id))
+                },
+                onActivitiesClick = { planId, sessionId ->
+                    navController.navigate(NavigationRoutes.activityScreen(planId, sessionId))
                 }
             )
         }
-        
+
         // Pantalla de chat del plan de estudio
         composable(
             route = NavigationRoutes.STUDY_PLAN_CHAT,
@@ -193,6 +205,25 @@ fun AppNavigation(
             val planId = backStackEntry.arguments?.getString("planId") ?: ""
             StudyPlanChatScreen(
                 planId = planId,
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Pantalla de actividades
+        composable(
+            route = NavigationRoutes.ACTIVITY_SCREEN,
+            arguments = listOf(
+                navArgument("planId") { type = NavType.StringType },
+                navArgument("sessionId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val planId = backStackEntry.arguments?.getString("planId") ?: ""
+            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
+            ActivityScreen(
+                studyPlanId = planId,
+                sessionId = sessionId,
                 onBackClick = {
                     navController.popBackStack()
                 }

@@ -28,7 +28,9 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -61,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.studym8.data.model.StudyPlan
 import com.example.studym8.ui.components.AiResponseView
+import com.example.studym8.ui.viewmodel.ActivityViewModel
 import com.example.studym8.ui.viewmodel.AuthViewModel
 import com.example.studym8.ui.viewmodel.StudyPlanViewModel
 import java.text.SimpleDateFormat
@@ -74,8 +77,10 @@ fun StudyPlanDetailScreen(
     planId: String,
     authViewModel: AuthViewModel = viewModel(),
     studyPlanViewModel: StudyPlanViewModel = viewModel(),
+    activityViewModel: ActivityViewModel = viewModel(),
     onBackClick: () -> Unit,
-    onChatClick: (String) -> Unit = {}
+    onChatClick: (String) -> Unit = {},
+    onActivitiesClick: (String, String) -> Unit = { _, _ -> }
 ) {
     // Estados
     val currentUser by authViewModel.currentUser.collectAsState(initial = null)
@@ -83,20 +88,20 @@ fun StudyPlanDetailScreen(
     val isLoading by studyPlanViewModel.isLoading.collectAsState()
     val error by studyPlanViewModel.error.collectAsState()
     var showFullDescription by remember { mutableStateOf(false) }
-    
+
     // Cargar el plan cuando se muestra la pantalla
     LaunchedEffect(planId) {
         studyPlanViewModel.getStudyPlanById(planId)
     }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
                         text = "Detalles del Plan",
                         fontWeight = FontWeight.Bold
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -138,7 +143,7 @@ fun StudyPlanDetailScreen(
             } else if (selectedPlan != null) {
                 // Mostrar detalles del plan
                 val plan = selectedPlan!!
-                
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -277,7 +282,7 @@ fun StudyPlanDetailScreen(
 
                             // Procesar la descripción para convertir texto entre asteriscos en negrita
                             val formattedDescription = formatDescriptionText(plan.description)
-                            
+
                             // Si la descripción es larga, mostrar un botón para expandir
                             if (plan.description.length > 200 && !showFullDescription) {
                                 Text(
@@ -285,7 +290,7 @@ fun StudyPlanDetailScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.padding(top = 8.dp)
                                 )
-                                
+
                                 Text(
                                     text = "Mostrar más",
                                     style = MaterialTheme.typography.labelMedium,
@@ -301,7 +306,7 @@ fun StudyPlanDetailScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.padding(top = 8.dp)
                                 )
-                                
+
                                 if (plan.description.length > 200 && showFullDescription) {
                                     Text(
                                         text = "Mostrar menos",
@@ -318,7 +323,7 @@ fun StudyPlanDetailScreen(
                     }
 
                     Spacer(modifier = Modifier.height(28.dp))
-                    
+
                     // Secciones del Plan de Estudio con Checkboxes
                     if (plan.sessions.isNotEmpty()) {
                         Card(
@@ -337,7 +342,7 @@ fun StudyPlanDetailScreen(
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(bottom = 16.dp)
                                 )
-                                
+
                                 plan.sessions.forEachIndexed { index, session ->
                                     if (index > 0) {
                                         Divider(
@@ -347,7 +352,7 @@ fun StudyPlanDetailScreen(
                                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                                         )
                                     }
-                                    
+
                                     SessionItem(
                                         session = session,
                                         onSessionStatusChanged = { isCompleted ->
@@ -356,12 +361,15 @@ fun StudyPlanDetailScreen(
                                                 sessionId = session.id,
                                                 isCompleted = isCompleted
                                             )
+                                        },
+                                        onActivitiesClick = {
+                                            onActivitiesClick(plan.id, session.id)
                                         }
                                     )
                                 }
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.height(28.dp))
                     }
                     // Si no hay sesiones pero el plan es generado por IA, mostrar botón para generar sesiones
@@ -390,7 +398,7 @@ fun StudyPlanDetailScreen(
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(bottom = 16.dp)
                                     )
-                                    
+
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(40.dp),
                                         color = MaterialTheme.colorScheme.primary
@@ -417,7 +425,7 @@ fun StudyPlanDetailScreen(
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(bottom = 16.dp)
                                     )
-                                    
+
                                     androidx.compose.material3.Button(
                                         onClick = {
                                             studyPlanViewModel.generateSessionsFromAIResponse(plan.id)
@@ -429,10 +437,10 @@ fun StudyPlanDetailScreen(
                                 }
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.height(28.dp))
                     }
-                    
+
                     // Mostrar barra de progreso animada
                     if (!plan.isCompleted) {
                         Card(
@@ -454,12 +462,12 @@ fun StudyPlanDetailScreen(
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(bottom = 16.dp)
                                 )
-                                
+
                                 val animatedProgress by animateFloatAsState(
                                     targetValue = plan.completionRate / 100f,
                                     label = "progressAnimation"
                                 )
-                                
+
                                 CircularProgressIndicator(
                                     progress = animatedProgress,
                                     modifier = Modifier.size(100.dp),
@@ -467,7 +475,7 @@ fun StudyPlanDetailScreen(
                                     trackColor = MaterialTheme.colorScheme.surfaceVariant,
                                     strokeWidth = 8.dp
                                 )
-                                
+
                                 Text(
                                     text = "${plan.completionRate}%",
                                     style = MaterialTheme.typography.titleLarge,
@@ -476,7 +484,7 @@ fun StudyPlanDetailScreen(
                                 )
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.height(28.dp))
                     }
 
@@ -547,21 +555,21 @@ fun formatDescriptionText(description: String): AnnotatedString {
     return buildAnnotatedString {
         val boldRegex = """(\*\*)(.*?)(\*\*)""".toRegex()
         var lastMatchEnd = 0
-        
+
         // Encontrar todas las coincidencias de patrón **texto**
         boldRegex.findAll(description).forEach { match ->
             // Añadir texto normal antes del texto en negrita
             append(description.substring(lastMatchEnd, match.range.first))
-            
+
             // Añadir texto en negrita (sin los **)
             val boldText = match.groupValues[2]
             withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                 append(boldText)
             }
-            
+
             lastMatchEnd = match.range.last + 1
         }
-        
+
         // Añadir cualquier texto restante después de la última coincidencia
         if (lastMatchEnd < description.length) {
             append(description.substring(lastMatchEnd))
@@ -575,10 +583,11 @@ fun formatDescriptionText(description: String): AnnotatedString {
 @Composable
 fun SessionItem(
     session: com.example.studym8.data.model.StudySession,
-    onSessionStatusChanged: (Boolean) -> Unit
+    onSessionStatusChanged: (Boolean) -> Unit,
+    onActivitiesClick: () -> Unit = {}
 ) {
     var isExpanded by remember { mutableStateOf(false) }
-    
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -598,7 +607,7 @@ fun SessionItem(
                     uncheckedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             )
-            
+
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -608,31 +617,40 @@ fun SessionItem(
                     text = session.title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (session.isCompleted) 
+                    color = if (session.isCompleted)
                         MaterialTheme.colorScheme.primary
-                    else 
+                    else
                         MaterialTheme.colorScheme.onSurface
                 )
-                
+
                 Text(
                     text = "${session.duration} minutos",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
-            
+
+            // Botón para actividades
+            IconButton(onClick = onActivitiesClick) {
+                Icon(
+                    imageVector = Icons.Default.QuestionAnswer,
+                    contentDescription = "Actividades",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
             IconButton(onClick = { isExpanded = !isExpanded }) {
                 Icon(
-                    imageVector = if (isExpanded) 
+                    imageVector = if (isExpanded)
                         androidx.compose.material.icons.Icons.Default.KeyboardArrowUp
-                    else 
+                    else
                         androidx.compose.material.icons.Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Contraer" else "Expandir",
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
         }
-        
+
         // Contenido expandido con notas
         AnimatedVisibility(visible = isExpanded) {
             Column(
@@ -647,7 +665,21 @@ fun SessionItem(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                     )
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onActivitiesClick,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.QuestionAnswer,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text("Ver actividades")
+                }
             }
         }
     }
-} 
+}
