@@ -10,6 +10,7 @@ import com.example.studym8.data.model.ResponseSectionType
 import com.example.studym8.data.model.StudyPlan
 import com.example.studym8.data.model.StudySession
 import com.example.studym8.data.model.toResponseSections
+import com.example.studym8.data.repository.ActivityRepository
 import com.example.studym8.data.repository.StudyPlanRepository
 import com.google.firebase.Timestamp
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,75 +23,76 @@ import java.util.Locale
 import java.util.UUID
 
 class StudyPlanViewModel : ViewModel() {
-    
+
     private val repository = StudyPlanRepository()
+    private val activityRepository = ActivityRepository()
     private var notificationManager: NotificationManager? = null
-    
+
     // StateFlow para la lista de planes de estudio
     private val _studyPlans = MutableStateFlow<List<StudyPlan>>(emptyList())
     val studyPlans: StateFlow<List<StudyPlan>> = _studyPlans
-    
+
     // StateFlow para el plan de estudio seleccionado
     private val _selectedPlan = MutableStateFlow<StudyPlan?>(null)
     val selectedPlan: StateFlow<StudyPlan?> = _selectedPlan
-    
+
     // StateFlow para manejar estados de carga
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
-    
+
     // StateFlow para manejar errores
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
-    
+
     // StateFlow para la respuesta de IA
     private val _aiResponse = MutableStateFlow<String?>(null)
     val aiResponse: StateFlow<String?> = _aiResponse
-    
+
     // StateFlow para controlar si la respuesta de IA debe mostrarse
     private val _showAIResponse = MutableStateFlow(false)
     val showAIResponse: StateFlow<Boolean> = _showAIResponse
-    
+
     init {
         loadStudyPlans()
     }
-    
+
     fun initializeNotificationManager(context: Context) {
         notificationManager = NotificationManager(context)
     }
-    
+
     private fun checkStudyPlanStatus(studyPlan: StudyPlan) {
         val currentDate = Date()
         val calendar = Calendar.getInstance()
         calendar.time = currentDate
-        
+
         // Verificar si el plan está vencido
         if (studyPlan.endDateTime.toDate().before(currentDate) && !studyPlan.isCompleted) {
             notificationManager?.showStudyPlanNotification(studyPlan, NotificationType.OVERDUE)
         }
-        
+
         // Verificar si el plan está próximo a vencer (3 días antes)
         calendar.add(Calendar.DAY_OF_MONTH, 3)
-        if (studyPlan.endDateTime.toDate().before(calendar.time) && 
-            studyPlan.endDateTime.toDate().after(currentDate) && 
+        if (studyPlan.endDateTime.toDate().before(calendar.time) &&
+            studyPlan.endDateTime.toDate().after(currentDate) &&
             !studyPlan.isCompleted) {
             notificationManager?.showStudyPlanNotification(studyPlan, NotificationType.UPCOMING)
         }
-        
+
         // Verificar si hay actividades pendientes
         if (!studyPlan.isCompleted && studyPlan.completionRate < 100) {
             notificationManager?.showStudyPlanNotification(studyPlan, NotificationType.INCOMPLETE)
         }
     }
-    
+
     fun loadStudyPlans() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            
+
             try {
                 val plans = repository.getStudyPlans()
                 _studyPlans.value = plans
-                
+
                 // Verificar estados pero con un retraso entre verificaciones
                 checkStudyPlansStatusWithDelay(plans)
             } catch (e: Exception) {
@@ -100,7 +102,7 @@ class StudyPlanViewModel : ViewModel() {
             }
         }
     }
-    
+
     private fun checkStudyPlansStatusWithDelay(plans: List<StudyPlan>) {
         viewModelScope.launch {
             plans.forEachIndexed { index, plan ->
@@ -112,32 +114,35 @@ class StudyPlanViewModel : ViewModel() {
             }
         }
     }
-    
+
     fun getStudyPlanById(planId: String) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
                 val plan = repository.getStudyPlanById(planId)
                 _selectedPlan.value = plan
-                
+
                 // Verificar si el plan es generado por IA, tiene respuesta AI pero no tiene sesiones
                 if (plan != null && plan.aiGenerated && plan.aiResponse.isNotBlank() && plan.sessions.isEmpty()) {
                     // Generar sesiones automáticamente
                     val sessionsFromAI = parseSessionsFromAIResponse(plan.aiResponse)
-                    
+
                     if (sessionsFromAI.isNotEmpty()) {
                         // Actualizar el plan con las sesiones generadas
                         val updatedPlan = plan.copy(sessions = sessionsFromAI)
-                        
+
                         // Actualizar en el repositorio
                         val success = repository.updateStudyPlan(updatedPlan)
                         if (success) {
                             // Actualizar el plan seleccionado
                             _selectedPlan.value = updatedPlan
+
+                            // Generar actividades para cada sesión
+                            generateActivitiesForSessions(updatedPlan)
                         }
                     }
                 }
-                
+
                 _error.value = null
             } catch (e: Exception) {
                 _error.value = "Error al obtener el plan de estudio: ${e.message}"
@@ -147,7 +152,7 @@ class StudyPlanViewModel : ViewModel() {
             }
         }
     }
-    
+
     fun createStudyPlan(
         title: String,
         subject: String,
@@ -159,12 +164,12 @@ class StudyPlanViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             _isLoading.value = true
-            
+
             try {
                 // Calcular duración en minutos
                 val durationMs = endDateTime.time - startDateTime.time
                 val durationMinutes = (durationMs / (1000 * 60)).toInt()
-                
+
                 // Crear el objeto StudyPlan
                 val studyPlan = StudyPlan(
                     title = title,
@@ -175,10 +180,10 @@ class StudyPlanViewModel : ViewModel() {
                     totalDuration = durationMinutes,
                     tags = listOf(subject.lowercase())
                 )
-                
+
                 // Guardar en el repositorio
                 val planId = repository.createStudyPlan(studyPlan)
-                
+
                 if (planId != null) {
                     // Recargar la lista de planes
                     loadStudyPlans()
@@ -193,7 +198,7 @@ class StudyPlanViewModel : ViewModel() {
             }
         }
     }
-    
+
     fun createAIStudyPlan(
         subject: String,
         startDateTime: Date,
@@ -204,12 +209,12 @@ class StudyPlanViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             _isLoading.value = true
-            
+
             try {
                 // Calcular duración en minutos
                 val durationMs = endDateTime.time - startDateTime.time
                 val durationMinutes = (durationMs / (1000 * 60)).toInt()
-                
+
                 // Crear el objeto StudyPlan
                 val studyPlan = StudyPlan(
                     title = "Estudio de $subject",
@@ -223,11 +228,30 @@ class StudyPlanViewModel : ViewModel() {
                     color = "#4285F4",  // Color azul de Google
                     aiResponse = aiResponse
                 )
-                
+
                 // Guardar en el repositorio
                 val planId = repository.createStudyPlan(studyPlan)
-                
+
                 if (planId != null) {
+                    // Obtener el plan creado para generar sesiones y actividades
+                    val createdPlan = repository.getStudyPlanById(planId)
+                    createdPlan?.let { plan ->
+                        // Extraer sesiones de la respuesta de IA
+                        val sessions = parseSessionsFromAIResponse(aiResponse)
+
+                        if (sessions.isNotEmpty()) {
+                            // Actualizar el plan con las sesiones generadas
+                            val updatedPlan = plan.copy(sessions = sessions)
+
+                            // Actualizar en el repositorio
+                            val success = repository.updateStudyPlan(updatedPlan)
+                            if (success) {
+                                // Generar actividades para cada sesión
+                                generateActivitiesForSessions(updatedPlan)
+                            }
+                        }
+                    }
+
                     // Recargar la lista de planes
                     loadStudyPlans()
                     onSuccess(planId)
@@ -241,7 +265,7 @@ class StudyPlanViewModel : ViewModel() {
             }
         }
     }
-    
+
     fun generateAIStudyPlan(
         subject: String,
         startDateTime: Date,
@@ -251,7 +275,7 @@ class StudyPlanViewModel : ViewModel() {
             _isLoading.value = true
             _showAIResponse.value = false
             _aiResponse.value = null
-            
+
             try {
                 val response = repository.generateAIStudyPlan(subject, startDateTime, endDateTime)
                 _aiResponse.value = response
@@ -263,7 +287,7 @@ class StudyPlanViewModel : ViewModel() {
             }
         }
     }
-    
+
     fun updateCompletionStatus(planId: String, isCompleted: Boolean, completionRate: Int) {
         viewModelScope.launch {
             try {
@@ -286,11 +310,11 @@ class StudyPlanViewModel : ViewModel() {
             }
         }
     }
-    
+
     fun deleteStudyPlan(planId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             _isLoading.value = true
-            
+
             try {
                 val success = repository.deleteStudyPlan(planId)
                 if (success) {
@@ -307,7 +331,7 @@ class StudyPlanViewModel : ViewModel() {
             }
         }
     }
-    
+
     // Método para actualizar el estado de una sesión específica
     fun updateSessionStatus(planId: String, sessionId: String, isCompleted: Boolean) {
         viewModelScope.launch {
@@ -322,7 +346,7 @@ class StudyPlanViewModel : ViewModel() {
                                 session
                             }
                         }
-                        
+
                         // Calcular el nuevo porcentaje de completado
                         val completedSessions = updatedSessions.count { it.isCompleted }
                         val totalSessions = updatedSessions.size
@@ -331,26 +355,26 @@ class StudyPlanViewModel : ViewModel() {
                         } else {
                             0
                         }
-                        
+
                         // Determinar si el plan está completado
                         val allCompleted = updatedSessions.all { it.isCompleted }
-                        
+
                         // Crear el plan actualizado
                         val updatedPlan = currentPlan.copy(
                             sessions = updatedSessions,
                             completionRate = newCompletionRate,
                             isCompleted = allCompleted
                         )
-                        
+
                         // Actualizar el plan en el repositorio
                         val success = repository.updateStudyPlan(updatedPlan)
                         if (success) {
                             // Actualizar el plan seleccionado
                             _selectedPlan.value = updatedPlan
-                            
+
                             // También actualizar el estado general de completado
                             repository.updateCompletionStatus(planId, allCompleted, newCompletionRate)
-                            
+
                             // Recargar la lista de planes
                             loadStudyPlans()
                         }
@@ -361,7 +385,7 @@ class StudyPlanViewModel : ViewModel() {
             }
         }
     }
-    
+
     // Método para generar sesiones a partir del plan de estudio y la respuesta de IA
     fun generateSessionsFromAIResponse(planId: String) {
         viewModelScope.launch {
@@ -370,16 +394,19 @@ class StudyPlanViewModel : ViewModel() {
                     if (currentPlan.id == planId && currentPlan.aiGenerated && currentPlan.aiResponse.isNotBlank()) {
                         // Extraer sesiones de la respuesta de IA
                         val sessions = parseSessionsFromAIResponse(currentPlan.aiResponse)
-                        
+
                         // Actualizar el plan con las sesiones generadas
                         val updatedPlan = currentPlan.copy(sessions = sessions)
-                        
+
                         // Actualizar en el repositorio
                         val success = repository.updateStudyPlan(updatedPlan)
                         if (success) {
                             // Actualizar el plan seleccionado
                             _selectedPlan.value = updatedPlan
-                            
+
+                            // Generar actividades para cada sesión
+                            generateActivitiesForSessions(updatedPlan)
+
                             // Recargar la lista de planes
                             loadStudyPlans()
                         }
@@ -390,30 +417,30 @@ class StudyPlanViewModel : ViewModel() {
             }
         }
     }
-    
+
     // Método auxiliar para extraer las sesiones del texto generado por IA
     private fun parseSessionsFromAIResponse(aiResponse: String): List<StudySession> {
         val sessions = mutableListOf<StudySession>()
-        
+
         try {
             // Buscar el formato específico de secciones "## Sesión X: [Título]"
             val sessionRegex = """##\s+Sesión\s+(\d+):\s+(.+?)(?=##\s+Sesión\s+\d+:|${'$'})""".toRegex(RegexOption.DOT_MATCHES_ALL)
             val matches = sessionRegex.findAll(aiResponse)
-            
+
             matches.forEach { matchResult ->
                 val sessionNumber = matchResult.groupValues[1]
                 val fullContent = matchResult.groupValues[2].trim()
-                
+
                 // Extraer el título (primera línea) y el contenido (resto)
                 val title = fullContent.substringBefore("\n").trim()
                 val content = fullContent.substringAfter("\n", "").trim()
-                
+
                 val fullTitle = if (title.isNotBlank()) {
                     "Sesión $sessionNumber: $title"
                 } else {
                     "Sesión $sessionNumber"
                 }
-                
+
                 // Crear la sesión y añadirla a la lista
                 val session = StudySession(
                     id = UUID.randomUUID().toString(),
@@ -422,27 +449,27 @@ class StudyPlanViewModel : ViewModel() {
                     isCompleted = false,
                     notes = if (content.isNotBlank()) content else fullContent
                 )
-                
+
                 sessions.add(session)
             }
-            
+
             // Si no se encontraron sesiones con el regex principal, intentar con el regex alternativo
             if (sessions.isEmpty()) {
                 // Fallback al método anterior para mantener compatibilidad
                 val fallbackRegex = """(?:Sesión|Pomodoro)\s+(\d+)(?:[:-]\s*|\n)(.+?)(?=(?:Sesión|Pomodoro)\s+\d+|${'$'})""".toRegex(RegexOption.DOT_MATCHES_ALL)
                 val fallbackMatches = fallbackRegex.findAll(aiResponse)
-                
+
                 fallbackMatches.forEach { matchResult ->
                     val sessionNumber = matchResult.groupValues[1]
                     val sessionContent = matchResult.groupValues[2].trim()
-                    
+
                     // Extraer el título de la sesión (primera línea o hasta el primer punto)
                     val title = if (sessionContent.contains("\n")) {
                         sessionContent.substringBefore("\n").trim()
                     } else {
                         sessionContent.substringBefore(".").trim()
                     }
-                    
+
                     // Crear la sesión y añadirla a la lista
                     val session = StudySession(
                         id = UUID.randomUUID().toString(),
@@ -451,11 +478,11 @@ class StudyPlanViewModel : ViewModel() {
                         isCompleted = false,
                         notes = sessionContent
                     )
-                    
+
                     sessions.add(session)
                 }
             }
-            
+
             // Si aún no se encontraron sesiones, intentar dividir por líneas como último recurso
             if (sessions.isEmpty()) {
                 // Dividir por líneas y buscar patrones típicos de sesiones
@@ -463,10 +490,10 @@ class StudyPlanViewModel : ViewModel() {
                 var currentSessionContent = ""
                 var currentSessionTitle = ""
                 var currentSessionNumber = 0
-                
+
                 for (line in lines) {
                     val trimmedLine = line.trim()
-                    
+
                     if (trimmedLine.matches(""".*?(?:Sesión|Pomodoro|SESIÓN|POMODORO)\s*\d+.*""".toRegex())) {
                         // Si ya teníamos una sesión anterior, guardarla
                         if (currentSessionTitle.isNotBlank()) {
@@ -480,12 +507,12 @@ class StudyPlanViewModel : ViewModel() {
                                 )
                             )
                         }
-                        
+
                         // Intentar extraer el número de sesión
                         val numberRegex = """(?:Sesión|Pomodoro|SESIÓN|POMODORO)\s*(\d+)""".toRegex()
                         val numberMatch = numberRegex.find(trimmedLine)
                         currentSessionNumber = numberMatch?.groupValues?.get(1)?.toIntOrNull() ?: (currentSessionNumber + 1)
-                        
+
                         // Iniciar nueva sesión
                         currentSessionTitle = "Sesión $currentSessionNumber"
                         currentSessionContent = trimmedLine
@@ -494,7 +521,7 @@ class StudyPlanViewModel : ViewModel() {
                         currentSessionContent += "\n$trimmedLine"
                     }
                 }
-                
+
                 // Añadir la última sesión si existe
                 if (currentSessionTitle.isNotBlank()) {
                     sessions.add(
@@ -512,34 +539,34 @@ class StudyPlanViewModel : ViewModel() {
             println("Error al analizar sesiones: ${e.message}")
             e.printStackTrace()
         }
-        
+
         return sessions
     }
-    
+
     // Métodos auxiliares para formatear datos
-    
+
     fun formatTimestamp(timestamp: Timestamp?): String {
         if (timestamp == null) return ""
-        
+
         val date = timestamp.toDate()
         val dateFormat = SimpleDateFormat("dd MMM yyyy • HH:mm", Locale("es", "ES"))
         return dateFormat.format(date)
     }
-    
+
     fun formatDate(date: Date?): String {
         if (date == null) return ""
-        
+
         val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale("es", "ES"))
         return dateFormat.format(date)
     }
-    
+
     fun formatTime(date: Date?): String {
         if (date == null) return ""
-        
+
         val timeFormat = SimpleDateFormat("HH:mm", Locale("es", "ES"))
         return timeFormat.format(date)
     }
-    
+
     fun getChipTextFromPlan(plan: StudyPlan): String {
         return when {
             plan.isCompleted -> "Completado"
@@ -547,7 +574,7 @@ class StudyPlanViewModel : ViewModel() {
             else -> "En progreso"
         }
     }
-    
+
     fun getChipColorFromPlan(plan: StudyPlan): androidx.compose.ui.graphics.Color {
         return when {
             plan.isCompleted -> androidx.compose.ui.graphics.Color(0xFF4CAF50) // Verde
@@ -555,13 +582,43 @@ class StudyPlanViewModel : ViewModel() {
             else -> androidx.compose.ui.graphics.Color(0xFFFFA000) // Ámbar
         }
     }
-    
+
     // Método para formatear la respuesta de la IA en secciones
     fun formatAIResponse(response: String): List<ResponseSection> {
         return response.toResponseSections()
     }
-    
+
     fun toggleAIResponseVisibility(show: Boolean) {
         _showAIResponse.value = show
     }
-} 
+
+    /**
+     * Método para generar actividades para todas las sesiones de un plan de estudio
+     */
+    private fun generateActivitiesForSessions(plan: StudyPlan) {
+        viewModelScope.launch {
+            plan.sessions.forEach { session ->
+                try {
+                    // Verificar si ya existen actividades para esta sesión
+                    val existingActivities = activityRepository.getActivitiesForSession(plan.id, session.id)
+
+                    // Solo generar actividades si no existen
+                    if (existingActivities.isEmpty() && session.notes.isNotBlank()) {
+                        activityRepository.generateActivitiesForSession(
+                            studyPlanId = plan.id,
+                            sessionId = session.id,
+                            sessionTitle = session.title,
+                            sessionContent = session.notes
+                        )
+                    }
+                } catch (e: Exception) {
+                    // Registrar el error pero continuar con las demás sesiones
+                    println("Error al generar actividades para la sesión ${session.id}: ${e.message}")
+                }
+
+                // Agregar un pequeño retraso entre solicitudes para no sobrecargar la API
+                kotlinx.coroutines.delay(1000)
+            }
+        }
+    }
+}

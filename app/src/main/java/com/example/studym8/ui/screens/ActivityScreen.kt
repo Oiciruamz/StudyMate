@@ -59,17 +59,17 @@ fun ActivityScreen(
     val evaluationResult by activityViewModel.evaluationResult.collectAsState()
     val activityProgress by activityViewModel.activityProgress.collectAsState()
     val selectedPlan by studyPlanViewModel.selectedPlan.collectAsState()
-    
+
     // Estado local para controlar qué vista mostrar
     var showActivityList by remember { mutableStateOf(true) }
     var currentActivityId by remember { mutableStateOf<String?>(null) }
-    
+
     // Cargar actividades cuando se muestra la pantalla
     LaunchedEffect(studyPlanId, sessionId) {
         activityViewModel.loadActivitiesForSession(studyPlanId, sessionId)
         studyPlanViewModel.getStudyPlanById(studyPlanId)
     }
-    
+
     // Cargar actividad seleccionada cuando cambia
     LaunchedEffect(currentActivityId) {
         currentActivityId?.let {
@@ -77,18 +77,18 @@ fun ActivityScreen(
             showActivityList = false
         }
     }
-    
+
     // Título de la sesión
     val sessionTitle = selectedPlan?.sessions?.find { it.id == sessionId }?.title ?: "Actividades"
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
                         text = if (showActivityList) "Actividades: $sessionTitle" else "Pregunta",
                         fontWeight = FontWeight.Bold
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = {
@@ -145,13 +145,19 @@ fun ActivityScreen(
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
                     if (showActivityList) {
-                        // Mostrar tarjeta de progreso
-                        ActivityProgressCard(
-                            progress = activityProgress
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
+                        // Mostrar tarjeta de progreso centrada
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ActivityProgressCard(
+                                progress = activityProgress,
+                                modifier = Modifier.fillMaxWidth(0.8f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
                         // Mostrar lista de actividades
                         ActivityList(
                             activities = activities,

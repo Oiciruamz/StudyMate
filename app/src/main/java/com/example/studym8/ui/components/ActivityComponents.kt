@@ -29,7 +29,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -82,7 +82,7 @@ fun ActivityList(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            
+
             if (isLoading) {
                 Box(
                     modifier = Modifier
@@ -108,9 +108,9 @@ fun ActivityList(
                         index = index,
                         onClick = { onActivitySelected(activity) }
                     )
-                    
+
                     if (index < activities.size - 1) {
-                        Divider(
+                        HorizontalDivider(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp),
@@ -167,7 +167,7 @@ fun ActivityListItem(
                 )
             }
         }
-        
+
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -179,7 +179,7 @@ fun ActivityListItem(
                 fontWeight = FontWeight.Medium,
                 maxLines = 2
             )
-            
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(top = 4.dp)
@@ -195,13 +195,13 @@ fun ActivityListItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
-                
+
                 Text(
                     text = " • ",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
-                
+
                 // Dificultad
                 Text(
                     text = when (activity.difficulty) {
@@ -216,14 +216,14 @@ fun ActivityListItem(
                         QuestionDifficulty.HARD -> Color(0xFFF44336)
                     }
                 )
-                
+
                 if (activity.isAnswered) {
                     Text(
                         text = " • ",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
-                    
+
                     // Puntuación
                     Text(
                         text = "${activity.score}/100",
@@ -234,7 +234,7 @@ fun ActivityListItem(
                 }
             }
         }
-        
+
         // Icono de estado
         Icon(
             imageVector = if (activity.isAnswered) Icons.Default.Check else Icons.Default.QuestionAnswer,
@@ -302,7 +302,7 @@ fun ActivityQuestionView(
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }
-                
+
                 // Dificultad
                 Box(
                     modifier = Modifier
@@ -331,9 +331,9 @@ fun ActivityQuestionView(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             // Pregunta
             Text(
                 text = activity.question,
@@ -341,7 +341,7 @@ fun ActivityQuestionView(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            
+
             // Contenido según el tipo de pregunta
             when (activity.type) {
                 QuestionType.MULTIPLE_CHOICE -> {
@@ -370,9 +370,9 @@ fun ActivityQuestionView(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             // Botón de enviar respuesta
             if (!activity.isAnswered && evaluationResult == null) {
                 Button(
@@ -391,7 +391,7 @@ fun ActivityQuestionView(
                     }
                 }
             }
-            
+
             // Mostrar resultado de la evaluación
             AnimatedVisibility(
                 visible = evaluationResult != null,
@@ -422,14 +422,14 @@ fun ActivityQuestionView(
                                 color = if (isCorrect) Color(0xFF4CAF50) else Color(0xFFF44336)
                             )
                         }
-                        
+
                         // Feedback
                         Text(
                             text = feedback,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
-                        
+
                         // Botón para cerrar el resultado
                         TextButton(
                             onClick = onDismissResult,
@@ -496,7 +496,7 @@ fun MultipleChoiceQuestion(
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(start = 8.dp)
                 )
-                
+
                 if (isAnswered && option == correctAnswer) {
                     Icon(
                         imageVector = Icons.Default.Check,
@@ -532,7 +532,7 @@ fun TrueFalseQuestion(
     correctAnswer: String
 ) {
     val options = listOf("Verdadero", "Falso")
-    
+
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -574,7 +574,7 @@ fun TrueFalseQuestion(
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(start = 8.dp)
                 )
-                
+
                 if (isAnswered && option == correctAnswer) {
                     Icon(
                         imageVector = Icons.Default.Check,
@@ -643,43 +643,43 @@ fun ActivityProgressCard(
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
             Text(
                 text = "Progreso de actividades",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            
-            val animatedProgress by animateFloatAsState(
-                targetValue = progress / 100f,
-                label = "progressAnimation"
-            )
-            
+
             CircularProgressIndicator(
-                progress = animatedProgress,
+                progress = { progress / 100f },
                 modifier = Modifier.size(100.dp),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 strokeWidth = 8.dp
             )
-            
+
             Text(
                 text = "$progress%",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 16.dp)
             )
-            
+
             Text(
                 text = getProgressMessage(progress),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 8.dp)
             )
+            }
         }
     }
 }
